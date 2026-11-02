@@ -5,7 +5,6 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDate;
-import java.time.LocalTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -18,15 +17,13 @@ public interface AgendamentoRepository extends JpaRepository<Agendamento, Long> 
             """)
     List<Agendamento> doDia(@Param("lojaId") Long lojaId, @Param("data") LocalDate data);
 
-    /** Um atendimento por horário na loja (de qualquer cliente). Cancelado libera o horário; id = quem está sendo reativado. */
+    /** Atendimentos que ocupam a agenda no dia (cancelado não ocupa). Poucos por dia: o intervalo é conferido em Java. */
     @Query("""
-            select count(a) > 0 from Agendamento a
-            where a.loja.id = :lojaId and a.data = :data and a.hora = :hora
+            select a from Agendamento a
+            where a.loja.id = :lojaId and a.data = :data
               and a.status <> br.com.marcoslab.petshop.agenda.StatusAgendamento.CANCELADO
-              and (:id is null or a.id <> :id)
             """)
-    boolean horarioOcupado(@Param("lojaId") Long lojaId, @Param("data") LocalDate data, @Param("hora") LocalTime hora,
-                           @Param("id") Long id);
+    List<Agendamento> ativosDoDia(@Param("lojaId") Long lojaId, @Param("data") LocalDate data);
 
     @Query("select a from Agendamento a join fetch a.pet p join fetch p.tutor where a.id = :id and a.loja.id = :lojaId")
     Optional<Agendamento> buscarNaLoja(@Param("id") Long id, @Param("lojaId") Long lojaId);

@@ -56,6 +56,7 @@ Login do painel: usuário `loja`, senha `troque-esta-senha` (padrão de desenvol
 | `PAINEL_LOJA` | `petshop-cleiton` | Slug da loja que esse login acessa |
 | `CORS_ORIGENS` | `http://localhost:3000` | Endereço do site (separe vários por vírgula) |
 | `WHATSAPP_AUTOMATICO` | `false` | Liga o disparo automático às 18h |
+| `AGENDA_INTERVALO_MINUTOS` | `40` | Minutos mínimos entre um atendimento e outro (no site: `intervaloAgendaMinutos` em `site/src/lib/loja.ts`) |
 
 ## 3. Endpoints (todos com HTTP Basic)
 
@@ -69,7 +70,7 @@ Base: `/api/lojas/{slug}`
 | POST | `/tutores/{id}/pets` | Novo pet |
 | GET/POST | `/pets/{petId}/vacinas` | Carteira de vacinação |
 | GET | `/agenda?data=yyyy-MM-dd` | Agenda do dia |
-| POST | `/agenda` | Novo agendamento. **Um atendimento por horário** (de qualquer cliente); cancelado libera o horário |
+| POST | `/agenda` | Novo agendamento. **Intervalo mínimo entre atendimentos** (padrão 40 min, de qualquer cliente); cancelado libera o horário |
 | PATCH | `/agenda/{id}/status` | Muda status e, opcional, `valor` cobrado. Concluir sem valor usa o preço padrão do serviço. Banho concluído atualiza o "último banho" do pet |
 | GET | `/lembretes?data=` | Lembretes do dia (agendamentos, reforço de vacina, retorno de banho) |
 | POST | `/lembretes/enviados` | Marca lembrete como enviado |
@@ -130,7 +131,9 @@ despesas eventuais, atendimentos e **custo médio por atendimento** ((fixos + va
 ## Pendências antes de entregar
 
 - [ ] **Trocar os dados de exemplo (fictícios)** pelos reais do Cleiton: nome, WhatsApp, endereço, horários e Instagram em
-  `site/src/lib/loja.ts`; nome/WhatsApp da loja e preços dos serviços numa migration nova (`V5__...`), nunca editando a V3.
+  `site/src/lib/loja.ts`; nome/WhatsApp da loja e preços dos serviços numa migration nova (`V7__...`), nunca editando a V3.
+- [ ] **Trocar o intervalo entre agendamentos** (hoje 40 min, provisório; combinar com o Cleiton, ex.: 30 min): variável
+  `AGENDA_INTERVALO_MINUTOS` na API **e** `intervaloAgendaMinutos` em `site/src/lib/loja.ts` (os dois com o mesmo valor).
   Os preços também podem ser mudados pela tela Financeiro → Preços dos serviços.
 - [ ] Limitar tentativas de login na API (hoje não há bloqueio após senhas erradas) antes de publicar.
 - [ ] Fotos reais da loja no site (com autorização dos tutores que aparecerem).

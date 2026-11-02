@@ -244,7 +244,7 @@ class FinanceiroApiTest {
     }
 
     @Test
-    void umAtendimentoPorHorarioMesmoDeOutroCliente() throws Exception {
+    void quarentaMinutosEntreUmAtendimentoEOutroDeQualquerCliente() throws Exception {
         long thor = novoPet();
         long tutor2 = criar("/tutores", """
                 {"nome":"Bruno Lima","whatsapp":"(62) 98888-0000"}
@@ -253,26 +253,32 @@ class FinanceiroApiTest {
                 {"nome":"Luna","especie":"Gato"}
                 """).get("id").asLong();
         String agendar = """
-                {"petId":%d,"data":"2026-03-02","hora":"10:00","tipo":"BANHO"}
+                {"petId":%d,"data":"2026-03-02","hora":"%s","tipo":"BANHO"}
                 """;
+        String perto = "Muito perto do atendimento das 10:00. Deixe pelo menos 40 minutos entre um atendimento e outro.";
 
-        long idThor = criar("/agenda", agendar.formatted(thor)).get("id").asLong();
-        // outro cliente, mesmo dia e horário: recusado
-        mvc.perform(logado(post(BASE + "/agenda")).content(agendar.formatted(luna)))
-                .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.detail").value("Já existe um atendimento nesse horário. Escolha outro horário."));
-        // outro horário no mesmo dia: pode
-        criar("/agenda", agendar.replace("10:00", "11:00").formatted(luna));
+        long idThor = criar("/agenda", agendar.formatted(thor, "10:00")).get("id").asLong();
+        // outro cliente: mesmo horário, 30 min depois e 30 min antes são recusados
+        for (String hora : new String[]{"10:00", "10:30", "09:30", "10:39"}) {
+            mvc.perform(logado(post(BASE + "/agenda")).content(agendar.formatted(luna, hora)))
+                    .andExpect(status().isConflict())
+                    .andExpect(jsonPath("$.detail").value(perto));
+        }
+        // exatamente 40 min depois (e antes) pode
+        long idLuna = criar("/agenda", agendar.formatted(luna, "10:40")).get("id").asLong();
+        criar("/agenda", agendar.formatted(luna, "09:20"));
+        // em outro dia, o mesmo horário pode
+        criar("/agenda", agendar.replace("2026-03-02", "2026-03-03").formatted(luna, "10:00"));
 
-        // cancelar libera o horário para outra pessoa
+        // cancelar libera o espaço; reativar depois que alguém ocupou é recusado
+        mvc.perform(logado(patch(BASE + "/agenda/" + idLuna + "/status")).content("{\"status\":\"CANCELADO\"}"))
+                .andExpect(status().isOk());
         mvc.perform(logado(patch(BASE + "/agenda/" + idThor + "/status")).content("{\"status\":\"CANCELADO\"}"))
                 .andExpect(status().isOk());
-        criar("/agenda", agendar.formatted(luna).replace("BANHO", "TOSA"));
-
-        // reativar o cancelado num horário que já foi ocupado: recusado
+        criar("/agenda", agendar.formatted(luna, "10:20"));
         mvc.perform(logado(patch(BASE + "/agenda/" + idThor + "/status")).content("{\"status\":\"CONFIRMADO\"}"))
                 .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.detail").value("Já existe um atendimento nesse horário. Escolha outro horário."));
+                .andExpect(jsonPath("$.detail").value("Muito perto do atendimento das 10:20. Deixe pelo menos 40 minutos entre um atendimento e outro."));
     }
 
     @Test

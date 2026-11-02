@@ -3,6 +3,7 @@ package br.com.marcoslab.petshop.loja;
 import br.com.marcoslab.petshop.erro.Erros;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
@@ -26,5 +27,14 @@ public class LojaService {
             throw new Erros.NaoEncontrado("Loja não encontrada");
         }
         return lojas.findBySlug(slug).orElseThrow(() -> new Erros.NaoEncontrado("Loja não encontrada"));
+    }
+
+    /**
+     * Grava agendamentos da loja um de cada vez (até o fim da transação), para dois salvamentos ao mesmo
+     * tempo não passarem juntos pela conferência do intervalo entre horários.
+     */
+    @Transactional(propagation = Propagation.MANDATORY)
+    public void travarAgenda(Loja loja) {
+        lojas.travar(loja.getId());
     }
 }

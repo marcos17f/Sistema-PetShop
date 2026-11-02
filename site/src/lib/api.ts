@@ -132,20 +132,28 @@ export async function listarAgenda(data: string): Promise<Agendamento[]> {
 
 export async function criarAgendamento(dados: NovoAgendamento): Promise<Agendamento> {
   if (!modoDemonstracao) return chamar(`/agenda`, { method: "POST", body: JSON.stringify(dados) });
-  // um atendimento por horário, de qualquer cliente (mesma regra da API)
-  const conflito = db.agendamentos.some((a) => a.data === dados.data && a.hora === dados.hora && a.status !== "CANCELADO");
-  if (conflito) throw new Error("Já existe um atendimento nesse horário. Escolha outro horário.");
+  garantirIntervalo(dados.data, dados.hora, null);
   const a = { ...dados, id: novoId(), status: "AGUARDANDO" as StatusAgendamento, valor: null };
   db.agendamentos.push(a);
   return comNomes(a);
+}
+
+/** Mesma regra da API: pelo menos loja.intervaloAgendaMinutos entre um atendimento e outro, de qualquer cliente. */
+function garantirIntervalo(data: string, hora: string, ignorar: number | null) {
+  const minutos = (h: string) => Number(h.slice(0, 2)) * 60 + Number(h.slice(3, 5));
+  const perto = db.agendamentos.find(
+    (x) => x.id !== ignorar && x.data === data && x.status !== "CANCELADO" && Math.abs(minutos(x.hora) - minutos(hora)) < loja.intervaloAgendaMinutos,
+  );
+  if (perto) {
+    throw new Error(`Muito perto do atendimento das ${perto.hora}. Deixe pelo menos ${loja.intervaloAgendaMinutos} minutos entre um atendimento e outro.`);
+  }
 }
 
 /** valor é opcional: ao concluir sem valor, a API usa o preço padrão do serviço. */
 export async function mudarStatus(id: number, status: StatusAgendamento, valor?: number): Promise<Agendamento> {
   if (!modoDemonstracao) return chamar(`/agenda/${id}/status`, { method: "PATCH", body: JSON.stringify({ status, valor }) });
   const a = db.agendamentos.find((x) => x.id === id)!;
-  const ocupado = db.agendamentos.some((x) => x.id !== id && x.data === a.data && x.hora === a.hora && x.status !== "CANCELADO");
-  if (a.status === "CANCELADO" && status !== "CANCELADO" && ocupado) throw new Error("Já existe um atendimento nesse horário. Escolha outro horário.");
+  if (a.status === "CANCELADO" && status !== "CANCELADO") garantirIntervalo(a.data, a.hora, id);
   const antes = { status: a.status, valor: a.valor };
   a.status = status;
   if (valor !== undefined) a.valor = valor;

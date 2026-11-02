@@ -11,6 +11,8 @@ export const loja = {
   /** Só números, com 55 + DDD. */
   whatsapp: "5562999990000",
   instagram: "petshopdocleiton",
+  /** Minutos mínimos entre um atendimento e outro; manter igual a AGENDA_INTERVALO_MINUTOS da API. */
+  intervaloAgendaMinutos: 40,
   servicos: [
     { nome: "Banho", texto: "Banho com produtos adequados a cada tipo de pelo." },
     { nome: "Tosa", texto: "Tosa higiênica e tosa completa." },
