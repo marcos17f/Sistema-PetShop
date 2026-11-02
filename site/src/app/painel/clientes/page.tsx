@@ -2,18 +2,16 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { CLIENTE_VAZIO, FormCliente } from "@/components/FormCliente";
 import { Carregando, Erro, Titulo } from "@/components/Ui";
-import { criarTutor, listarTutores, type NovoTutor } from "@/lib/api";
+import { criarTutor, listarTutores } from "@/lib/api";
 import type { Tutor } from "@/lib/tipos";
-
-const VAZIO: NovoTutor = { nome: "", whatsapp: "", endereco: "", cpf: "", origem: "WhatsApp" };
 
 export default function Clientes() {
   const [busca, setBusca] = useState("");
   const [lista, setLista] = useState<Tutor[] | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [novo, setNovo] = useState(false);
-  const [form, setForm] = useState<NovoTutor>(VAZIO);
 
   useEffect(() => {
     const t = setTimeout(() => {
@@ -22,22 +20,6 @@ export default function Clientes() {
     return () => clearTimeout(t);
   }, [busca]);
 
-  async function salvar(e: React.FormEvent) {
-    e.preventDefault();
-    if (form.nome.trim().length < 3 || form.whatsapp.replace(/\D/g, "").length < 10) {
-      return setErro("Informe o nome e o WhatsApp com DDD.");
-    }
-    try {
-      const t = await criarTutor(form);
-      setLista((l) => [t, ...(l ?? [])]);
-      setForm(VAZIO);
-      setNovo(false);
-      setErro(null);
-    } catch (er) {
-      setErro((er as Error).message);
-    }
-  }
-
   return (
     <>
       <Titulo titulo="Clientes e pets">
@@ -45,31 +27,15 @@ export default function Clientes() {
       </Titulo>
 
       {novo && (
-        <form onSubmit={salvar} className="cartao grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] items-end gap-3.5">
-          <label className="flex flex-col gap-1.5">
-            <span className="rotulo">Nome</span>
-            <input className="campo" value={form.nome} onChange={(e) => setForm({ ...form, nome: e.target.value })} />
-          </label>
-          <label className="flex flex-col gap-1.5">
-            <span className="rotulo">WhatsApp com DDD</span>
-            <input className="campo" type="tel" value={form.whatsapp} onChange={(e) => setForm({ ...form, whatsapp: e.target.value })} />
-          </label>
-          <label className="flex flex-col gap-1.5">
-            <span className="rotulo">Endereço</span>
-            <input className="campo" value={form.endereco} onChange={(e) => setForm({ ...form, endereco: e.target.value })} />
-          </label>
-          <label className="flex flex-col gap-1.5">
-            <span className="rotulo">CPF (opcional)</span>
-            <input className="campo" inputMode="numeric" value={form.cpf} onChange={(e) => setForm({ ...form, cpf: e.target.value })} />
-          </label>
-          <label className="flex flex-col gap-1.5">
-            <span className="rotulo">Chegou por</span>
-            <select className="campo" value={form.origem} onChange={(e) => setForm({ ...form, origem: e.target.value })}>
-              {["WhatsApp", "Instagram", "Google", "Indicação", "Passou na loja"].map((o) => <option key={o}>{o}</option>)}
-            </select>
-          </label>
-          <button type="submit" className="btn btn-verde">Salvar cliente</button>
-        </form>
+        <FormCliente
+          inicial={CLIENTE_VAZIO}
+          textoBotao="Salvar cliente"
+          aoSalvar={async (dados) => {
+            const t = await criarTutor(dados);
+            setLista((l) => [t, ...(l ?? [])]);
+            setNovo(false);
+          }}
+        />
       )}
 
       <label className="flex flex-col gap-1.5">

@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
-import { ChipStatus, Carregando, Erro, Titulo } from "@/components/Ui";
-import { criarAgendamento, listarAgenda, listarLembretes, listarTutores, mudarStatus, type NovoAgendamento } from "@/lib/api";
+import { BotaoExcluir, ChipStatus, Carregando, Erro, Titulo } from "@/components/Ui";
+import { alterarAgendamento, criarAgendamento, excluirAgendamento, listarAgenda, listarLembretes, listarTutores, mudarStatus, type NovoAgendamento } from "@/lib/api";
 import { diaPorExtenso, hoje, somarDias } from "@/lib/datas";
 import { NOMES_SERVICO, NOMES_STATUS, lerValor, type Agendamento, type Lembrete, type StatusAgendamento, type TipoServico, type Tutor } from "@/lib/tipos";
 
@@ -21,6 +21,7 @@ export default function Agenda() {
   const [lembretes, setLembretes] = useState<Lembrete[]>([]);
   const [erro, setErro] = useState<string | null>(null);
   const [novo, setNovo] = useState(false);
+  const [editandoId, setEditandoId] = useState<number | null>(null);
 
   const carregar = useCallback(async () => {
     setErro(null);
@@ -127,6 +128,40 @@ export default function Agenda() {
                     <option key={v} value={v}>{t}</option>
                   ))}
                 </select>
+                {/* concluído já está no financeiro: não edita nem exclui (mude a situação antes, se foi engano) */}
+                {a.status !== "CONCLUIDO" && (
+                  <span className="flex flex-wrap gap-2">
+                    {a.status !== "CANCELADO" && (
+                      <button type="button" className="btn btn-claro min-h-10" aria-expanded={editandoId === a.id} onClick={() => setEditandoId(editandoId === a.id ? null : a.id)}>
+                        Editar
+                      </button>
+                    )}
+                    <BotaoExcluir
+                      pergunta={`Excluir o agendamento das ${a.hora} (${a.petNome})?`}
+                      aoConfirmar={async () => {
+                        try {
+                          await excluirAgendamento(a.id);
+                          carregar();
+                        } catch (e) {
+                          setErro((e as Error).message);
+                        }
+                      }}
+                    />
+                  </span>
+                )}
+                {editandoId === a.id && (
+                  <div className="basis-full">
+                    <NovoAgendamentoForm
+                      data={a.data}
+                      editando={a}
+                      aoSalvar={() => {
+                        setEditandoId(null);
+                        carregar();
+                      }}
+                      aoCancelar={() => setEditandoId(null)}
+                    />
+                  </div>
+                )}
               </li>
             ))}
           </ul>
@@ -160,9 +195,19 @@ function ValorCobrado({ a, aoSalvar }: { a: Agendamento; aoSalvar: (valor: numbe
   );
 }
 
-function NovoAgendamentoForm({ data, aoSalvar }: { data: string; aoSalvar: () => void }) {
+/** Novo agendamento, ou edição de um existente quando recebe "editando". */
+function NovoAgendamentoForm({ data, editando, aoSalvar, aoCancelar }: {
+  data: string;
+  editando?: Agendamento;
+  aoSalvar: () => void;
+  aoCancelar?: () => void;
+}) {
   const [tutores, setTutores] = useState<Tutor[]>([]);
-  const [form, setForm] = useState<NovoAgendamento>({ petId: 0, data, hora: "09:00", tipo: "BANHO", descricao: "" });
+  const [form, setForm] = useState<NovoAgendamento>(
+    editando
+      ? { petId: editando.petId, data: editando.data, hora: editando.hora, tipo: editando.tipo, descricao: editando.descricao }
+      : { petId: 0, data, hora: "09:00", tipo: "BANHO", descricao: "" },
+  );
   const [erro, setErro] = useState<string | null>(null);
   const [salvando, setSalvando] = useState(false);
 
@@ -175,7 +220,8 @@ function NovoAgendamentoForm({ data, aoSalvar }: { data: string; aoSalvar: () =>
     if (!form.petId) return setErro("Escolha o pet.");
     setSalvando(true);
     try {
-      await criarAgendamento(form);
+      if (editando) await alterarAgendamento(editando.id, form);
+      else await criarAgendamento(form);
       aoSalvar();
     } catch (er) {
       setErro((er as Error).message);
@@ -215,7 +261,10 @@ function NovoAgendamentoForm({ data, aoSalvar }: { data: string; aoSalvar: () =>
         <span className="rotulo">Detalhe (opcional)</span>
         <input className="campo" placeholder="Ex.: hidratação" value={form.descricao} onChange={(e) => setForm({ ...form, descricao: e.target.value })} />
       </label>
-      <button type="submit" disabled={salvando} className="btn btn-verde">{salvando ? "Salvando…" : "Salvar"}</button>
+      <div className="flex gap-2">
+        <button type="submit" disabled={salvando} className="btn btn-verde flex-1">{salvando ? "Salvando…" : editando ? "Salvar alterações" : "Salvar"}</button>
+        {aoCancelar && <button type="button" className="btn btn-claro" onClick={aoCancelar}>Cancelar</button>}
+      </div>
       <div className="col-span-full"><Erro texto={erro} /></div>
     </form>
   );

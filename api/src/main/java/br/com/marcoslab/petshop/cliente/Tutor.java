@@ -33,6 +33,10 @@ public class Tutor {
     @Column(name = "criado_em", nullable = false)
     private Instant criadoEm;
 
+    /** Preenchido quando o cliente é excluído mas tinha atendimento concluído (dados pessoais apagados). */
+    @Column(name = "removido_em")
+    private Instant removidoEm;
+
     @OneToMany(mappedBy = "tutor")
     @OrderBy("nome")
     private List<Pet> pets = new ArrayList<>();
@@ -48,6 +52,24 @@ public class Tutor {
         this.cpf = cpf;
         this.origem = origem;
         this.criadoEm = criadoEm;
+    }
+
+    public void alterar(String nome, String whatsapp, String endereco, String cpf, String origem) {
+        this.nome = nome.trim();
+        this.whatsapp = whatsapp.replaceAll("\\D", "");
+        this.endereco = endereco;
+        this.cpf = cpf;
+        this.origem = origem;
+    }
+
+    /** LGPD: apaga os dados pessoais e mantém o registro, para os valores já recebidos continuarem no financeiro. */
+    public void anonimizar(Instant agora) {
+        this.nome = "Cliente removido";
+        this.whatsapp = "";
+        this.endereco = null;
+        this.cpf = null;
+        this.origem = null;
+        this.removidoEm = agora;
     }
 
     public Long getId() { return id; }

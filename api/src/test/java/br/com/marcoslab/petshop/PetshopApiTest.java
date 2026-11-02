@@ -7,13 +7,18 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
 import java.time.LocalDate;
+import java.time.ZoneId;
+import java.util.Map;
 
 import static org.hamcrest.Matchers.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.httpBasic;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -31,6 +36,9 @@ class PetshopApiTest {
 
     @Autowired
     ObjectMapper json;
+
+    @Autowired
+    JdbcTemplate jdbc;
 
     private MockHttpServletRequestBuilder logado(MockHttpServletRequestBuilder req) {
         return req.with(httpBasic("loja", "senha-teste")).contentType(MediaType.APPLICATION_JSON);
@@ -164,5 +172,150 @@ class PetshopApiTest {
                         """))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.campos.reforcoDepois").exists());
+    }
+
+    private long tutorDoPet(long petId) {
+        return jdbc.queryForObject("select tutor_id from pet where id = ?", Long.class, petId);
+    }
+
+    private int contar(String tabela) {
+        return jdbc.queryForObject("select count(*) from " + tabela, Integer.class);
+    }
+
+    @Test
+    void editaAgendamentoRespeitandoIntervaloEExcluiLancadoPorEngano() throws Exception {
+        long thor = novoTutorComPet();
+        String ag = """
+                {"petId":%d,"data":"2026-03-02","hora":"%s","tipo":"%s","descricao":"%s"}
+                """;
+        long a1 = criar("/agenda", ag.formatted(thor, "10:00", "BANHO", "")).get("id").asLong();
+        long a2 = criar("/agenda", ag.formatted(thor, "14:00", "BANHO", "")).get("id").asLong();
+
+        // remarcar para perto de outro atendimento: recusado
+        mvc.perform(logado(put(BASE + "/agenda/" + a2)).content(ag.formatted(thor, "10:20", "BANHO", "")))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.detail").value(containsString("atendimento das 10:00")));
+        // manter o próprio horário não conflita com ele mesmo; serviço e detalhe mudam
+        mvc.perform(logado(put(BASE + "/agenda/" + a2)).content(ag.formatted(thor, "14:00", "TOSA", "Hidratação")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.tipo").value("TOSA"))
+                .andExpect(jsonPath("$.descricao").value("Hidratação"));
+        mvc.perform(logado(put(BASE + "/agenda/" + a2)).content(ag.formatted(thor, "15:30", "TOSA", "")))
+                .andExpect(jsonPath("$.hora").value("15:30"));
+
+        // concluído já está no financeiro: não edita nem exclui
+        mvc.perform(logado(patch(BASE + "/agenda/" + a1 + "/status")).content("{\"status\":\"CONCLUIDO\"}"));
+        mvc.perform(logado(put(BASE + "/agenda/" + a1)).content(ag.formatted(thor, "11:00", "BANHO", "")))
+                .andExpect(status().isConflict());
+        mvc.perform(logado(delete(BASE + "/agenda/" + a1)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.detail").value(containsString("não pode ser excluído")));
+
+        // lançado por engano: exclui
+        mvc.perform(logado(delete(BASE + "/agenda/" + a2))).andExpect(status().isNoContent());
+        mvc.perform(logado(get(BASE + "/agenda").param("data", "2026-03-02"))).andExpect(jsonPath("$", hasSize(1)));
+        mvc.perform(logado(delete(BASE + "/agenda/" + a2))).andExpect(status().isNotFound());
+    }
+
+    @Test
+    void editaClienteEApagaPorCompletoCadastroFeitoPorEngano() throws Exception {
+        long thor = novoTutorComPet();
+        long tutor = tutorDoPet(thor);
+        criar("/pets/" + thor + "/vacinas", """
+                {"vacina":"V10","aplicadaEm":"2026-01-10","proximaEm":"2027-01-10"}
+                """);
+        criar("/agenda", """
+                {"petId":%d,"data":"2026-12-01","hora":"10:00","tipo":"BANHO"}
+                """.formatted(thor));
+
+        mvc.perform(logado(put(BASE + "/tutores/" + tutor)).content("""
+                        {"nome":"Ana Paula Lima","whatsapp":"(62) 98888-7777","endereco":"Rua 1","cpf":"","origem":"Google"}
+                        """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.nome").value("Ana Paula Lima"))
+                .andExpect(jsonPath("$.whatsapp").value("62988887777"))
+                .andExpect(jsonPath("$.origem").value("Google"))
+                .andExpect(jsonPath("$.pets[0].nome").value("Thor"));
+        mvc.perform(logado(put(BASE + "/tutores/" + tutor)).content("{\"nome\":\"Ana\",\"whatsapp\":\"abc\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.campos.whatsapp").value("WhatsApp inválido"));
+
+        mvc.perform(logado(delete(BASE + "/tutores/" + tutor))).andExpect(status().isNoContent());
+
+        mvc.perform(logado(get(BASE + "/tutores/" + tutor))).andExpect(status().isNotFound());
+        assertEquals(0, contar("tutor"));
+        assertEquals(0, contar("pet"));
+        assertEquals(0, contar("aplicacao_vacina"));
+        assertEquals(0, contar("agendamento"));
+    }
+
+    @Test
+    void excluirClienteComAtendimentoPagoApagaDadosPessoaisEMantemAReceita() throws Exception {
+        long thor = novoTutorComPet();
+        long tutor = tutorDoPet(thor);
+        long pago = criar("/agenda", """
+                {"petId":%d,"data":"2026-03-02","hora":"09:00","tipo":"BANHO"}
+                """.formatted(thor)).get("id").asLong();
+        mvc.perform(logado(patch(BASE + "/agenda/" + pago + "/status")).content("{\"status\":\"CONCLUIDO\"}"));
+        LocalDate futuro = LocalDate.now(ZoneId.of("America/Sao_Paulo")).plusDays(5);
+        long marcado = criar("/agenda", """
+                {"petId":%d,"data":"%s","hora":"10:00","tipo":"BANHO"}
+                """.formatted(thor, futuro)).get("id").asLong();
+
+        mvc.perform(logado(delete(BASE + "/tutores/" + tutor))).andExpect(status().isNoContent());
+
+        // some do painel e não recebe mais agendamento
+        mvc.perform(logado(get(BASE + "/tutores/" + tutor))).andExpect(status().isNotFound());
+        mvc.perform(logado(get(BASE + "/tutores").param("busca", "thor"))).andExpect(jsonPath("$", hasSize(0)));
+        mvc.perform(logado(post(BASE + "/agenda")).content("""
+                        {"petId":%d,"data":"%s","hora":"15:00","tipo":"BANHO"}
+                        """.formatted(thor, futuro)))
+                .andExpect(status().isNotFound());
+
+        // o valor recebido continua no financeiro, sem o nome
+        mvc.perform(logado(get(BASE + "/financeiro/atendimentos").param("mes", "2026-03")))
+                .andExpect(jsonPath("$[0].tutorNome").value("Cliente removido"))
+                .andExpect(jsonPath("$[0].valor").value(50.00));
+        // dados pessoais apagados; horário futuro liberado
+        Map<String, Object> linha = jdbc.queryForMap("select nome, whatsapp, endereco, cpf from tutor where id = ?", tutor);
+        assertEquals("Cliente removido", linha.get("nome"));
+        assertEquals("", linha.get("whatsapp"));
+        assertNull(linha.get("endereco"));
+        assertNull(linha.get("cpf"));
+        assertEquals("CANCELADO", jdbc.queryForObject("select status from agendamento where id = ?", String.class, marcado));
+    }
+
+    @Test
+    void editaEExcluiVacinaRegistradaErrado() throws Exception {
+        long thor = novoTutorComPet();
+        long v = criar("/pets/" + thor + "/vacinas", """
+                {"vacina":"V8","dose":"1ª dose","aplicadaEm":"2026-01-10","proximaEm":"2026-02-10"}
+                """).get("id").asLong();
+
+        mvc.perform(logado(put(BASE + "/pets/" + thor + "/vacinas/" + v)).content("""
+                        {"vacina":"V10","dose":"2ª dose","aplicadaEm":"2026-01-12","proximaEm":"2026-02-12"}
+                        """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.vacina").value("V10"))
+                .andExpect(jsonPath("$.dose").value("2ª dose"))
+                .andExpect(jsonPath("$.proximaEm").value("2026-02-12"));
+        // mesma validação do cadastro
+        mvc.perform(logado(put(BASE + "/pets/" + thor + "/vacinas/" + v)).content("""
+                        {"vacina":"V10","aplicadaEm":"2026-01-12","proximaEm":"2026-01-01"}
+                        """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.campos.reforcoDepois").exists());
+
+        // a vacina precisa ser do pet da URL
+        long tutor2 = criar("/tutores", """
+                {"nome":"Bruno Lima","whatsapp":"(62) 98888-0000"}
+                """).get("id").asLong();
+        long luna = criar("/tutores/" + tutor2 + "/pets", """
+                {"nome":"Luna","especie":"Gato"}
+                """).get("id").asLong();
+        mvc.perform(logado(delete(BASE + "/pets/" + luna + "/vacinas/" + v))).andExpect(status().isNotFound());
+
+        mvc.perform(logado(delete(BASE + "/pets/" + thor + "/vacinas/" + v))).andExpect(status().isNoContent());
+        mvc.perform(logado(get(BASE + "/pets/" + thor + "/vacinas"))).andExpect(jsonPath("$", hasSize(0)));
     }
 }

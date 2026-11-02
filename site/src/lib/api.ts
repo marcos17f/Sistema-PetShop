@@ -6,7 +6,7 @@ import { loja } from "./loja";
 import {
   calcularLembretes, calcularResumoMes, comNomes, db, descrever, garantirRecorrentes, novoId, registrar, tutorCompleto, type LancamentoDemo,
 } from "./demo";
-import { somarMeses } from "./datas";
+import { hoje, somarMeses } from "./datas";
 import { podeRepetir } from "./tipos";
 import type {
   AplicacaoVacina, Agendamento, Categoria, Lancamento, Lembrete, Pet, PrecoServico, RegistroHistorico, Resumo, StatusAgendamento, TipoLancamento,
@@ -77,6 +77,7 @@ export async function listarTutores(busca = ""): Promise<Tutor[]> {
   await espera();
   const b = busca.toLowerCase();
   return db.tutores
+    .filter((t) => !t.removido)
     .map(tutorCompleto)
     .filter((t) => !b || t.nome.toLowerCase().includes(b) || t.whatsapp.includes(b) || t.pets.some((p) => p.nome.toLowerCase().includes(b)));
 }
@@ -84,9 +85,40 @@ export async function listarTutores(busca = ""): Promise<Tutor[]> {
 export async function buscarTutor(id: number): Promise<Tutor> {
   if (!modoDemonstracao) return chamar(`/tutores/${id}`);
   await espera();
-  const t = db.tutores.find((x) => x.id === id);
+  const t = db.tutores.find((x) => x.id === id && !x.removido);
   if (!t) throw new Error("Cliente não encontrado.");
   return tutorCompleto(t);
+}
+
+export async function alterarTutor(id: number, dados: NovoTutor): Promise<Tutor> {
+  if (!modoDemonstracao) return chamar(`/tutores/${id}`, { method: "PUT", body: JSON.stringify(dados) });
+  const t = db.tutores.find((x) => x.id === id && !x.removido);
+  if (!t) throw new Error("Cliente não encontrado.");
+  Object.assign(t, { ...dados, nome: dados.nome.trim(), whatsapp: dados.whatsapp.replace(/\D/g, "") });
+  return tutorCompleto(t);
+}
+
+/**
+ * Cadastro por engano (sem atendimento concluído): apaga tudo do cliente. Com atendimento concluído: apaga os dados
+ * pessoais (LGPD), cancela os agendamentos futuros e mantém os valores no financeiro como "Cliente removido".
+ */
+export async function excluirTutor(id: number): Promise<void> {
+  if (!modoDemonstracao) return chamar(`/tutores/${id}`, { method: "DELETE" });
+  const t = db.tutores.find((x) => x.id === id)!;
+  const petIds = db.pets.filter((p) => p.tutorId === id).map((p) => p.id);
+  const doCliente = (a: { petId: number }) => petIds.includes(a.petId);
+  const qtd = `cliente #${id} · ${petIds.length} pet(s)`;
+  if (db.agendamentos.some((a) => doCliente(a) && a.status === "CONCLUIDO")) {
+    db.agendamentos.filter((a) => doCliente(a) && a.data >= hoje() && a.status !== "CONCLUIDO").forEach((a) => (a.status = "CANCELADO"));
+    Object.assign(t, { nome: "Cliente removido", whatsapp: "", endereco: "", cpf: "", origem: "", removido: true });
+    registrar("EXCLUIU", "cliente", id, qtd, "dados pessoais apagados; atendimentos concluídos mantidos no financeiro");
+  } else {
+    db.agendamentos = db.agendamentos.filter((a) => !doCliente(a));
+    db.vacinas = db.vacinas.filter((v) => !petIds.includes(v.petId));
+    db.pets = db.pets.filter((p) => p.tutorId !== id);
+    db.tutores = db.tutores.filter((x) => x.id !== id);
+    registrar("EXCLUIU", "cliente", id, qtd, "apagado por completo (sem atendimento concluído)");
+  }
 }
 
 export async function criarTutor(dados: NovoTutor): Promise<Tutor> {
@@ -115,9 +147,31 @@ export async function listarVacinas(petId: number): Promise<AplicacaoVacina[]> {
 
 export async function registrarVacina(petId: number, dados: NovaVacina): Promise<AplicacaoVacina> {
   if (!modoDemonstracao) return chamar(`/pets/${petId}/vacinas`, { method: "POST", body: JSON.stringify(dados) });
+  validarVacina(dados);
   const v = { ...dados, id: novoId(), petId };
   db.vacinas.push(v);
   return v;
+}
+
+export async function alterarVacina(petId: number, id: number, dados: NovaVacina): Promise<AplicacaoVacina> {
+  if (!modoDemonstracao) return chamar(`/pets/${petId}/vacinas/${id}`, { method: "PUT", body: JSON.stringify(dados) });
+  validarVacina(dados);
+  const v = db.vacinas.find((x) => x.id === id && x.petId === petId);
+  if (!v) throw new Error("Vacina não encontrada");
+  Object.assign(v, dados);
+  return v;
+}
+
+/** Apaga uma vacina registrada por engano. */
+export async function excluirVacina(petId: number, id: number): Promise<void> {
+  if (!modoDemonstracao) return chamar(`/pets/${petId}/vacinas/${id}`, { method: "DELETE" });
+  db.vacinas = db.vacinas.filter((x) => !(x.id === id && x.petId === petId));
+}
+
+/** Mesmas regras da API (demonstração). */
+function validarVacina(d: NovaVacina) {
+  if (d.aplicadaEm > hoje()) throw new Error("A data não pode ser futura");
+  if (d.proximaEm && d.proximaEm <= d.aplicadaEm) throw new Error("O reforço deve ser depois da aplicação");
 }
 
 /* ---------- agenda ---------- */
@@ -136,6 +190,27 @@ export async function criarAgendamento(dados: NovoAgendamento): Promise<Agendame
   const a = { ...dados, id: novoId(), status: "AGUARDANDO" as StatusAgendamento, valor: null };
   db.agendamentos.push(a);
   return comNomes(a);
+}
+
+/** Corrige um agendamento lançado errado (concluído e cancelado não são editados, como na API). */
+export async function alterarAgendamento(id: number, dados: NovoAgendamento): Promise<Agendamento> {
+  if (!modoDemonstracao) return chamar(`/agenda/${id}`, { method: "PUT", body: JSON.stringify(dados) });
+  const a = db.agendamentos.find((x) => x.id === id)!;
+  if (a.status === "CONCLUIDO" || a.status === "CANCELADO") {
+    throw new Error("Atendimento concluído ou cancelado não pode ser editado. Mude a situação antes, se foi engano.");
+  }
+  garantirIntervalo(dados.data, dados.hora, id);
+  Object.assign(a, dados);
+  return comNomes(a);
+}
+
+/** Apaga um agendamento lançado por engano. Concluído não: o valor já entrou no financeiro. */
+export async function excluirAgendamento(id: number): Promise<void> {
+  if (!modoDemonstracao) return chamar(`/agenda/${id}`, { method: "DELETE" });
+  if (db.agendamentos.find((x) => x.id === id)?.status === "CONCLUIDO") {
+    throw new Error("Atendimento concluído já entrou no financeiro e não pode ser excluído. Se foi engano, mude a situação antes.");
+  }
+  db.agendamentos = db.agendamentos.filter((x) => x.id !== id);
 }
 
 /** Mesma regra da API: pelo menos loja.intervaloAgendaMinutos entre um atendimento e outro, de qualquer cliente. */

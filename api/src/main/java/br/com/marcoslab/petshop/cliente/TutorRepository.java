@@ -12,7 +12,7 @@ public interface TutorRepository extends JpaRepository<Tutor, Long> {
     /** Busca por nome do tutor, WhatsApp ou nome de um dos pets (igual à busca do painel). */
     @Query("""
             select distinct t from Tutor t left join t.pets p
-            where t.loja.id = :lojaId
+            where t.loja.id = :lojaId and t.removidoEm is null
               and (:busca = ''
                    or lower(t.nome) like concat('%', :busca, '%')
                    or t.whatsapp like concat('%', :busca, '%')
@@ -21,5 +21,5 @@ public interface TutorRepository extends JpaRepository<Tutor, Long> {
             """)
     List<Tutor> buscar(@Param("lojaId") Long lojaId, @Param("busca") String busca);
 
-    Optional<Tutor> findByIdAndLojaId(Long id, Long lojaId);
+    Optional<Tutor> findByIdAndLojaIdAndRemovidoEmIsNull(Long id, Long lojaId);
 }

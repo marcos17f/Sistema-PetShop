@@ -67,10 +67,13 @@ Base: `/api/lojas/{slug}`
 | GET | `/tutores?busca=` | Lista/busca clientes (nome, WhatsApp ou nome do pet) |
 | GET | `/tutores/{id}` | Ficha do cliente com os pets |
 | POST | `/tutores` | Novo cliente |
+| PUT / DELETE | `/tutores/{id}` | Edita o cliente / exclui: cadastro por engano é apagado; com atendimento concluído, apaga os dados pessoais (LGPD) e mantém os valores no financeiro |
 | POST | `/tutores/{id}/pets` | Novo pet |
 | GET/POST | `/pets/{petId}/vacinas` | Carteira de vacinação |
+| PUT / DELETE | `/pets/{petId}/vacinas/{id}` | Corrige / apaga vacina registrada errado |
 | GET | `/agenda?data=yyyy-MM-dd` | Agenda do dia |
 | POST | `/agenda` | Novo agendamento. **Intervalo mínimo entre atendimentos** (padrão 40 min, de qualquer cliente); cancelado libera o horário |
+| PUT / DELETE | `/agenda/{id}` | Edita (pet, serviço, data, hora, detalhe) / exclui agendamento lançado por engano. Concluído não é editado nem excluído |
 | PATCH | `/agenda/{id}/status` | Muda status e, opcional, `valor` cobrado. Concluir sem valor usa o preço padrão do serviço. Banho concluído atualiza o "último banho" do pet |
 | GET | `/lembretes?data=` | Lembretes do dia (agendamentos, reforço de vacina, retorno de banho) |
 | POST | `/lembretes/enviados` | Marca lembrete como enviado |

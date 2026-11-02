@@ -62,6 +62,15 @@ public class Agendamento {
         this.criadoEm = criadoEm;
     }
 
+    /** Corrige pet, serviço, data, hora ou detalhe de um agendamento ainda não concluído. */
+    public void remarcar(Pet pet, LocalDate data, LocalTime hora, TipoServico tipo, String descricao) {
+        this.pet = pet;
+        this.data = data;
+        this.hora = hora;
+        this.tipo = tipo;
+        this.descricao = descricao;
+    }
+
     /**
      * Muda o status e, se informado, o valor cobrado.
      * Banho concluído atualiza o "último banho" do pet, que alimenta o lembrete de retorno.

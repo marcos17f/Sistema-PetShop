@@ -40,6 +40,14 @@ public class AplicacaoVacina {
         this.proximaEm = proximaEm;
     }
 
+    /** Corrige uma vacina registrada errado. */
+    public void alterar(String vacina, String dose, LocalDate aplicadaEm, LocalDate proximaEm) {
+        this.vacina = vacina;
+        this.dose = dose;
+        this.aplicadaEm = aplicadaEm;
+        this.proximaEm = proximaEm;
+    }
+
     public Long getId() { return id; }
     public Pet getPet() { return pet; }
     public String getVacina() { return vacina; }

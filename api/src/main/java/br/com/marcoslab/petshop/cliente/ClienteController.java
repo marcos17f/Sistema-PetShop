@@ -36,6 +36,18 @@ public class ClienteController {
         return clientes.criar(lojas.buscar(slug), dados);
     }
 
+    @PutMapping("/{id}")
+    public TutorDto alterar(@PathVariable String slug, @PathVariable Long id, @Valid @RequestBody NovoTutor dados) {
+        return clientes.alterar(lojas.buscar(slug), id, dados);
+    }
+
+    /** Cadastro por engano é apagado; cliente com atendimento concluído tem os dados pessoais apagados (ver ClienteService). */
+    @DeleteMapping("/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void excluir(@PathVariable String slug, @PathVariable Long id) {
+        clientes.excluir(lojas.buscar(slug), id);
+    }
+
     @PostMapping("/{id}/pets")
     @ResponseStatus(HttpStatus.CREATED)
     public PetDto criarPet(@PathVariable String slug, @PathVariable Long id, @Valid @RequestBody NovoPet dados) {

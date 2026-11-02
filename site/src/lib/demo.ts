@@ -91,7 +91,7 @@ export const db = {
     { id: 1, nome: "Felipe Santos", whatsapp: "(62) 99999-0000", endereco: "Rua das Flores, 120 · Centro", cpf: "", origem: "Instagram" },
     { id: 2, nome: "Mariana Costa", whatsapp: "(62) 98888-1111", endereco: "Av. Principal, 45", cpf: "", origem: "Google" },
     { id: 3, nome: "Ricardo Alves", whatsapp: "(62) 97777-2222", endereco: "Rua Nova, 300", cpf: "", origem: "Indicação" },
-  ] as Omit<Tutor, "pets">[],
+  ] as (Omit<Tutor, "pets"> & { removido?: boolean })[],
   pets: [
     { id: 11, tutorId: 1, nome: "Thor", especie: "Cão", raca: "Golden Retriever", pesoKg: 31, observacoes: "Agitado no secador. Usar shampoo hipoalergênico.", intervaloBanhoDias: 15, ultimoBanho: somarDias(H, -14) },
     { id: 12, tutorId: 1, nome: "Mel", especie: "Gato", raca: "SRD", pesoKg: 4, observacoes: "Arisca com estranhos. Atender em sala separada.", intervaloBanhoDias: 30, ultimoBanho: somarDias(H, -20) },
@@ -178,7 +178,8 @@ export function calcularLembretes(data: string): Lembrete[] {
       mensagem: `Olá, ${primeiro(tutor.nome)}! Amanhã completa ${pet.intervaloBanhoDias} dias do último banho do ${pet.nome}. Quer agendar o próximo?`,
     });
   }
-  return lista.map((l) => ({ ...l, enviado: db.enviados.has(l.chave) }));
+  // cliente removido não tem WhatsApp: não recebe lembrete (mesma regra da API)
+  return lista.filter((l) => l.whatsapp).map((l) => ({ ...l, enviado: db.enviados.has(l.chave) }));
 }
 
 /* ---------- financeiro: mesmas regras do FinanceiroService da API ---------- */

@@ -2,6 +2,7 @@ package br.com.marcoslab.petshop.vacina;
 
 import br.com.marcoslab.petshop.cliente.ClienteService;
 import br.com.marcoslab.petshop.cliente.Pet;
+import br.com.marcoslab.petshop.erro.Erros;
 import br.com.marcoslab.petshop.loja.LojaService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.AssertTrue;
@@ -63,5 +64,29 @@ public class VacinaController {
         Pet pet = clientes.petDaLoja(lojas.buscar(slug), petId);
         String dose = dados.dose() == null || dados.dose().isBlank() ? null : dados.dose().trim();
         return VacinaDto.de(vacinas.save(new AplicacaoVacina(pet, dados.vacina(), dose, dados.aplicadaEm(), dados.proximaEm())));
+    }
+
+    @PutMapping("/{id}")
+    @Transactional
+    public VacinaDto alterar(@PathVariable String slug, @PathVariable Long petId, @PathVariable Long id,
+                             @Valid @RequestBody NovaVacina dados) {
+        AplicacaoVacina v = vacinaDoPet(slug, petId, id);
+        String dose = dados.dose() == null || dados.dose().isBlank() ? null : dados.dose().trim();
+        v.alterar(dados.vacina().trim(), dose, dados.aplicadaEm(), dados.proximaEm());
+        return VacinaDto.de(v);
+    }
+
+    /** Apagar uma vacina registrada por engano. */
+    @DeleteMapping("/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @Transactional
+    public void excluir(@PathVariable String slug, @PathVariable Long petId, @PathVariable Long id) {
+        vacinas.delete(vacinaDoPet(slug, petId, id));
+    }
+
+    /** O pet precisa ser da loja e a vacina precisa ser desse pet. */
+    private AplicacaoVacina vacinaDoPet(String slug, Long petId, Long id) {
+        Pet pet = clientes.petDaLoja(lojas.buscar(slug), petId);
+        return vacinas.findByIdAndPetId(id, pet.getId()).orElseThrow(() -> new Erros.NaoEncontrado("Vacina não encontrada"));
     }
 }

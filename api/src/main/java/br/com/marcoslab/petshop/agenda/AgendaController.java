@@ -97,6 +97,39 @@ public class AgendaController {
         return AgendamentoDto.de(a);
     }
 
+    /** Editar um agendamento lançado errado. Concluído (já está no financeiro) e cancelado não são editados. */
+    @PutMapping("/{id}")
+    @Transactional
+    public AgendamentoDto alterar(@PathVariable String slug, @PathVariable Long id, @Valid @RequestBody NovoAgendamento dados) {
+        Loja loja = lojas.buscar(slug);
+        Agendamento a = agendamentoDaLoja(id, loja.getId());
+        if (a.getStatus() == StatusAgendamento.CONCLUIDO || a.getStatus() == StatusAgendamento.CANCELADO) {
+            throw new Erros.Conflito("Atendimento concluído ou cancelado não pode ser editado. Mude a situação antes, se foi engano.");
+        }
+        Pet pet = clientes.petDaLoja(loja, dados.petId());
+        lojas.travarAgenda(loja);
+        garantirIntervalo(loja.getId(), dados.data(), dados.hora(), id);
+        String descricao = dados.descricao() == null || dados.descricao().isBlank() ? null : dados.descricao().trim();
+        a.remarcar(pet, dados.data(), dados.hora(), dados.tipo(), descricao);
+        return AgendamentoDto.de(a);
+    }
+
+    /** Apagar um agendamento lançado por engano. Concluído não: o valor já entrou no financeiro. */
+    @DeleteMapping("/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @Transactional
+    public void excluir(@PathVariable String slug, @PathVariable Long id) {
+        Agendamento a = agendamentoDaLoja(id, lojas.buscar(slug).getId());
+        if (a.getStatus() == StatusAgendamento.CONCLUIDO) {
+            throw new Erros.Conflito("Atendimento concluído já entrou no financeiro e não pode ser excluído. Se foi engano, mude a situação antes.");
+        }
+        agenda.delete(a);
+    }
+
+    private Agendamento agendamentoDaLoja(Long id, Long lojaId) {
+        return agenda.buscarNaLoja(id, lojaId).orElseThrow(() -> new Erros.NaoEncontrado("Agendamento não encontrado"));
+    }
+
     @PatchMapping("/{id}/status")
     @Transactional
     public AgendamentoDto mudarStatus(@PathVariable String slug, @PathVariable Long id, @Valid @RequestBody NovoStatus corpo) {

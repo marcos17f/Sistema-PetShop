@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useParams } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
-import { Carregando, Erro } from "@/components/Ui";
-import { buscarTutor, criarPet, listarVacinas, registrarVacina, type NovaVacina, type NovoPet } from "@/lib/api";
+import { useParams, useRouter } from "next/navigation";
+import { Fragment, useCallback, useEffect, useState } from "react";
+import { FormCliente } from "@/components/FormCliente";
+import { BotaoExcluir, Carregando, Erro } from "@/components/Ui";
+import { alterarTutor, alterarVacina, buscarTutor, criarPet, excluirTutor, excluirVacina, listarVacinas, registrarVacina, type NovaVacina, type NovoPet } from "@/lib/api";
 import { formatar, hoje, proximoBanho, situacaoVacina } from "@/lib/datas";
 import { linkWhatsapp } from "@/lib/loja";
 import type { AplicacaoVacina, Pet, Tutor } from "@/lib/tipos";
@@ -15,6 +16,8 @@ export default function FichaCliente() {
   const [petId, setPetId] = useState<number | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [novoPet, setNovoPet] = useState(false);
+  const [editando, setEditando] = useState(false);
+  const router = useRouter();
 
   const carregar = useCallback(async () => {
     try {
@@ -48,9 +51,23 @@ export default function FichaCliente() {
             <span className="text-sm text-muted">{tutor.pets.length} {tutor.pets.length === 1 ? "pet" : "pets"}</span>
           </div>
         </div>
-        <a href={linkWhatsapp(tutor.whatsapp, `Olá, ${tutor.nome.split(" ")[0]}!`)} target="_blank" rel="noopener noreferrer" className="btn btn-claro">
-          Chamar no WhatsApp
-        </a>
+        <div className="flex flex-wrap items-center gap-2">
+          <a href={linkWhatsapp(tutor.whatsapp, `Olá, ${tutor.nome.split(" ")[0]}!`)} target="_blank" rel="noopener noreferrer" className="btn btn-claro">
+            Chamar no WhatsApp
+          </a>
+          <button type="button" className="btn btn-claro" aria-expanded={editando} onClick={() => setEditando((v) => !v)}>Editar</button>
+          <BotaoExcluir
+            pergunta={`Excluir ${tutor.nome}? Cadastro por engano é apagado; se já pagou atendimentos, os valores ficam no financeiro sem o nome.`}
+            aoConfirmar={async () => {
+              try {
+                await excluirTutor(tutor.id);
+                router.replace("/painel/clientes");
+              } catch (e) {
+                setErro((e as Error).message);
+              }
+            }}
+          />
+        </div>
         <dl className="m-0 grid flex-[1_1_100%] grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-3 border-t border-linha pt-4">
           {[
             ["WhatsApp", tutor.whatsapp],
@@ -65,6 +82,19 @@ export default function FichaCliente() {
           ))}
         </dl>
       </section>
+
+      {editando && (
+        <FormCliente
+          inicial={{ nome: tutor.nome, whatsapp: tutor.whatsapp, endereco: tutor.endereco, cpf: tutor.cpf, origem: tutor.origem || "WhatsApp" }}
+          textoBotao="Salvar alterações"
+          aoSalvar={async (dados) => {
+            setTutor(await alterarTutor(tutor.id, dados));
+            setEditando(false);
+          }}
+          aoCancelar={() => setEditando(false)}
+        />
+      )}
+      <Erro texto={erro} />
 
       <div role="tablist" aria-label="Pets do cliente" className="flex flex-wrap gap-2.5">
         {tutor.pets.map((p) => (
@@ -102,6 +132,8 @@ export default function FichaCliente() {
 function PainelPet({ pet }: { pet: Pet }) {
   const [vacinas, setVacinas] = useState<AplicacaoVacina[] | null>(null);
   const [nova, setNova] = useState(false);
+  const [editandoId, setEditandoId] = useState<number | null>(null);
+  const [erroVacina, setErroVacina] = useState<string | null>(null);
 
   useEffect(() => {
     setVacinas(null);
@@ -126,6 +158,7 @@ function PainelPet({ pet }: { pet: Pet }) {
             }}
           />
         )}
+        <Erro texto={erroVacina} />
         {!vacinas ? (
           <Carregando />
         ) : vacinas.length === 0 ? (
@@ -138,19 +171,56 @@ function PainelPet({ pet }: { pet: Pet }) {
                   {["Vacina", "Dose", "Aplicada", "Próxima", "Situação"].map((c) => (
                     <th key={c} scope="col" className="border-b border-linha px-2 py-2.5">{c}</th>
                   ))}
+                  <th scope="col" className="border-b border-linha px-2 py-2.5"><span className="sr-only">Ações</span></th>
                 </tr>
               </thead>
               <tbody>
                 {vacinas.map((v) => {
                   const s = situacaoVacina(v.proximaEm);
                   return (
-                    <tr key={v.id}>
-                      <td className="border-b border-linha px-2 py-3.5 font-bold">{v.vacina}</td>
-                      <td className="border-b border-linha px-2 py-3.5">{v.dose}</td>
-                      <td className="border-b border-linha px-2 py-3.5">{formatar(v.aplicadaEm, true)}</td>
-                      <td className="border-b border-linha px-2 py-3.5 font-bold">{formatar(v.proximaEm, true)}</td>
-                      <td className="border-b border-linha px-2 py-3.5"><span className={`chip ${s.classe}`}>{s.texto}</span></td>
-                    </tr>
+                    <Fragment key={v.id}>
+                      <tr>
+                        <td className="border-b border-linha px-2 py-3.5 font-bold">{v.vacina}</td>
+                        <td className="border-b border-linha px-2 py-3.5">{v.dose}</td>
+                        <td className="border-b border-linha px-2 py-3.5">{formatar(v.aplicadaEm, true)}</td>
+                        <td className="border-b border-linha px-2 py-3.5 font-bold">{formatar(v.proximaEm, true)}</td>
+                        <td className="border-b border-linha px-2 py-3.5"><span className={`chip ${s.classe}`}>{s.texto}</span></td>
+                        <td className="border-b border-linha px-2 py-2">
+                          <span className="flex flex-wrap justify-end gap-2">
+                            <button type="button" className="btn btn-claro min-h-10" aria-expanded={editandoId === v.id} onClick={() => setEditandoId(editandoId === v.id ? null : v.id)}>
+                              Editar
+                            </button>
+                            <BotaoExcluir
+                              pergunta={`Excluir ${v.vacina}${v.dose ? ` (${v.dose})` : ""}?`}
+                              aoConfirmar={async () => {
+                                try {
+                                  await excluirVacina(pet.id, v.id);
+                                  setVacinas((l) => l?.filter((x) => x.id !== v.id) ?? null);
+                                  setErroVacina(null);
+                                } catch (e) {
+                                  setErroVacina((e as Error).message);
+                                }
+                              }}
+                            />
+                          </span>
+                        </td>
+                      </tr>
+                      {editandoId === v.id && (
+                        <tr>
+                          <td colSpan={6} className="border-b border-linha py-3">
+                            <NovaVacinaForm
+                              petId={pet.id}
+                              editando={v}
+                              aoSalvar={(nova) => {
+                                setEditandoId(null);
+                                setVacinas((l) => l?.map((x) => (x.id === nova.id ? nova : x)) ?? null);
+                              }}
+                              aoCancelar={() => setEditandoId(null)}
+                            />
+                          </td>
+                        </tr>
+                      )}
+                    </Fragment>
                   );
                 })}
               </tbody>
@@ -224,15 +294,25 @@ function NovoPetForm({ tutorId, aoSalvar }: { tutorId: number; aoSalvar: (p: Pet
   );
 }
 
-function NovaVacinaForm({ petId, aoSalvar }: { petId: number; aoSalvar: (v: AplicacaoVacina) => void }) {
-  const [f, setF] = useState<NovaVacina>({ vacina: "", dose: "", aplicadaEm: hoje(), proximaEm: null });
+/** Registrar vacina, ou corrigir uma existente quando recebe "editando". */
+function NovaVacinaForm({ petId, editando, aoSalvar, aoCancelar }: {
+  petId: number;
+  editando?: AplicacaoVacina;
+  aoSalvar: (v: AplicacaoVacina) => void;
+  aoCancelar?: () => void;
+}) {
+  const [f, setF] = useState<NovaVacina>(
+    editando
+      ? { vacina: editando.vacina, dose: editando.dose, aplicadaEm: editando.aplicadaEm, proximaEm: editando.proximaEm }
+      : { vacina: "", dose: "", aplicadaEm: hoje(), proximaEm: null },
+  );
   const [erro, setErro] = useState<string | null>(null);
 
   async function salvar(e: React.FormEvent) {
     e.preventDefault();
     if (!f.vacina.trim()) return setErro("Informe a vacina.");
     try {
-      aoSalvar(await registrarVacina(petId, f));
+      aoSalvar(editando ? await alterarVacina(petId, editando.id, f) : await registrarVacina(petId, f));
     } catch (er) {
       setErro((er as Error).message);
     }
@@ -243,12 +323,18 @@ function NovaVacinaForm({ petId, aoSalvar }: { petId: number; aoSalvar: (v: Apli
       <label className="flex flex-col gap-1.5"><span className="rotulo">Vacina</span>
         <input className="campo" placeholder="Ex.: V10" value={f.vacina} onChange={(e) => setF({ ...f, vacina: e.target.value })} /></label>
       <label className="flex flex-col gap-1.5"><span className="rotulo">Dose</span>
-        <input className="campo" placeholder="Ex.: 2ª dose" value={f.dose} onChange={(e) => setF({ ...f, dose: e.target.value })} /></label>
+        <input className="campo" list="doses" placeholder="Ex.: 2ª dose" value={f.dose} onChange={(e) => setF({ ...f, dose: e.target.value })} /></label>
+      <datalist id="doses">
+        {["1ª dose", "2ª dose", "3ª dose", "Reforço anual", "Dose única"].map((d) => <option key={d} value={d} />)}
+      </datalist>
       <label className="flex flex-col gap-1.5"><span className="rotulo">Aplicada em</span>
         <input className="campo" type="date" value={f.aplicadaEm} onChange={(e) => setF({ ...f, aplicadaEm: e.target.value })} /></label>
       <label className="flex flex-col gap-1.5"><span className="rotulo">Próxima dose</span>
         <input className="campo" type="date" value={f.proximaEm ?? ""} onChange={(e) => setF({ ...f, proximaEm: e.target.value || null })} /></label>
-      <button type="submit" className="btn btn-verde">Registrar</button>
+      <div className="flex gap-2">
+        <button type="submit" className="btn btn-verde flex-1">{editando ? "Salvar alterações" : "Registrar"}</button>
+        {aoCancelar && <button type="button" className="btn btn-claro" onClick={aoCancelar}>Cancelar</button>}
+      </div>
       <div className="col-span-full"><Erro texto={erro} /></div>
     </form>
   );

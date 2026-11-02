@@ -1,3 +1,4 @@
+import { useState } from "react";
 import type { StatusAgendamento } from "@/lib/tipos";
 import { NOMES_STATUS } from "@/lib/tipos";
 
@@ -35,5 +36,36 @@ export function Titulo({ sobre, titulo, children }: { sobre?: string; titulo: st
       </div>
       {children}
     </div>
+  );
+}
+
+/** "Excluir" que pede confirmação na própria tela (sem janela do navegador), para não apagar por engano. */
+export function BotaoExcluir({ pergunta, aoConfirmar }: { pergunta: string; aoConfirmar: () => Promise<void> }) {
+  const [confirmando, setConfirmando] = useState(false);
+  const [excluindo, setExcluindo] = useState(false);
+  if (!confirmando) {
+    return <button type="button" className="btn btn-claro min-h-10" onClick={() => setConfirmando(true)}>Excluir</button>;
+  }
+  return (
+    <span role="alertdialog" aria-label={pergunta} className="flex flex-wrap items-center gap-2 rounded-xl bg-[#fbefe9] px-3 py-2 text-sm text-[#8a3b1e]">
+      <span className="font-semibold">{pergunta}</span>
+      <button
+        type="button"
+        disabled={excluindo}
+        className="btn min-h-9 bg-[#9b2c12] px-3 text-white"
+        onClick={async () => {
+          setExcluindo(true);
+          try {
+            await aoConfirmar();
+          } finally {
+            setExcluindo(false);
+            setConfirmando(false);
+          }
+        }}
+      >
+        {excluindo ? "Excluindo…" : "Sim, excluir"}
+      </button>
+      <button type="button" className="btn btn-claro min-h-9 px-3" onClick={() => setConfirmando(false)}>Não</button>
+    </span>
   );
 }
