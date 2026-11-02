@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { Fragment, useCallback, useEffect, useState } from "react";
 import { FormCliente } from "@/components/FormCliente";
 import { BotaoExcluir, Carregando, Erro } from "@/components/Ui";
-import { alterarPet, alterarTutor, alterarVacina, buscarTutor, criarPet, excluirPet, excluirTutor, excluirVacina, listarVacinas, registrarVacina, type NovaVacina, type NovoPet } from "@/lib/api";
+import { alterarPet, alterarTutor, promocoesCliente, alterarVacina, buscarTutor, criarPet, excluirPet, excluirTutor, excluirVacina, listarVacinas, registrarVacina, type NovaVacina, type NovoPet } from "@/lib/api";
 import { formatar, hoje, proximoBanho, situacaoVacina } from "@/lib/datas";
 import { linkWhatsapp } from "@/lib/loja";
 import type { AplicacaoVacina, Pet, Tutor } from "@/lib/tipos";
@@ -56,6 +56,17 @@ export default function FichaCliente() {
             Chamar no WhatsApp
           </a>
           <button type="button" className="btn btn-claro" aria-expanded={editando} onClick={() => setEditando((v) => !v)}>Editar</button>
+          <button type="button" className="btn btn-claro"
+            title={tutor.promocoesDesde ? "O cliente pediu para não receber mais" : "Só se o cliente pediu para receber promoções"}
+            onClick={async () => {
+              try {
+                setTutor(await promocoesCliente(tutor.id, !tutor.promocoesDesde));
+              } catch (e) {
+                setErro((e as Error).message);
+              }
+            }}>
+            {tutor.promocoesDesde ? "Tirar das promoções" : "Aceitou promoções"}
+          </button>
           <BotaoExcluir
             pergunta={`Excluir ${tutor.nome}? Cadastro por engano é apagado; se já pagou atendimentos, os valores ficam no financeiro sem o nome.`}
             aoConfirmar={async () => {
@@ -74,6 +85,11 @@ export default function FichaCliente() {
             ["Endereço", tutor.endereco || "—"],
             ["CPF (opcional)", tutor.cpf || "Não informado"],
             ["Chegou por", tutor.origem || "—"],
+            ["Promoções (LGPD)", tutor.promocoesDesde
+              ? `Aceitou em ${new Date(tutor.promocoesDesde).toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" })}`
+              : tutor.saiuDasPromocoesEm
+                ? `Saiu da lista em ${new Date(tutor.saiuDasPromocoesEm).toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" })}`
+                : "Não aceitou"],
           ].map(([r, v]) => (
             <div key={r}>
               <dt className="text-xs font-bold uppercase tracking-wider text-muted">{r}</dt>

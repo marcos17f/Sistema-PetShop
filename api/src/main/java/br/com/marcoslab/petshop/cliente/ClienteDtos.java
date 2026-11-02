@@ -39,11 +39,17 @@ public final class ClienteDtos {
         }
     }
 
-    public record TutorDto(Long id, String nome, String whatsapp, String endereco, String cpf, String origem, List<PetDto> pets) {
+    /** promocoesDesde: quando aceitou promoções (null = não aceitou); saiuDasPromocoesEm: quando pediu para sair. */
+    public record TutorDto(Long id, String nome, String whatsapp, String endereco, String cpf, String origem, List<PetDto> pets,
+                           java.time.Instant promocoesDesde, java.time.Instant saiuDasPromocoesEm) {
         public static TutorDto de(Tutor t) {
             return new TutorDto(t.getId(), t.getNome(), t.getWhatsapp(), texto(t.getEndereco()), texto(t.getCpf()),
-                    texto(t.getOrigem()), t.getPets().stream().map(PetDto::de).toList());
+                    texto(t.getOrigem()), t.getPets().stream().map(PetDto::de).toList(), t.getConsentimentoMarketingEm(),
+                    t.getDescadastradoEm());
         }
+    }
+
+    public record Promocoes(boolean aceita) {
     }
 
     /** O painel trata texto vazio como "não informado"; nunca devolvemos null em campos de texto. */

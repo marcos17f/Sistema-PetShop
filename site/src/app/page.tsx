@@ -7,8 +7,27 @@ import { carregarLoja } from "@/lib/lojaPublica";
 export default async function Site() {
   const c = await carregarLoja();
   const whats = c.whatsapp ? linkWhatsapp(c.whatsapp, "Olá! Quero agendar um horário.") : "#contato";
+  const site = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3001";
+  // SEO local: o Google entende que é um pet shop, onde fica, telefone e horário (dados da tela Configurações)
+  const dias = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "PetStore",
+    name: c.nome,
+    url: site,
+    telephone: c.whatsapp ? `+55${c.whatsapp.replace(/\D/g, "").replace(/^55/, "")}` : undefined,
+    address: { "@type": "PostalAddress", streetAddress: c.endereco || undefined, addressLocality: c.cidade || undefined, addressCountry: "BR" },
+    openingHoursSpecification: [
+      { "@type": "OpeningHoursSpecification", dayOfWeek: dias, opens: c.abre, closes: c.fecha },
+      ...(c.sabadoAbre && c.sabadoFecha ? [{ "@type": "OpeningHoursSpecification", dayOfWeek: ["Saturday"], opens: c.sabadoAbre, closes: c.sabadoFecha }] : []),
+    ],
+    sameAs: c.instagram ? [`https://instagram.com/${c.instagram}`] : undefined,
+    potentialAction: { "@type": "ReserveAction", target: `${site}/agendar` },
+  };
   return (
     <>
+      {/* dados da própria loja; "<" escapado para nunca fechar a tag script */}
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }} />
       <header className="bg-verde-escuro text-menta">
         <div className="mx-auto flex max-w-[1100px] flex-wrap items-center justify-between gap-4 px-6 py-5">
           <Marca nome={c.nome} subtitulo="Banho, tosa e vacinas" />

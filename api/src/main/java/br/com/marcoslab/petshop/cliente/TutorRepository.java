@@ -23,6 +23,16 @@ public interface TutorRepository extends JpaRepository<Tutor, Long> {
 
     Optional<Tutor> findByIdAndLojaIdAndRemovidoEmIsNull(Long id, Long lojaId);
 
+    Optional<Tutor> findByTokenDescadastro(String token);
+
+    /** Público das campanhas: só quem aceitou promoções (LGPD), não removido e com WhatsApp. */
+    @Query("""
+            select t from Tutor t where t.loja.id = :lojaId and t.removidoEm is null
+              and t.consentimentoMarketingEm is not null and t.whatsapp <> ''
+            order by t.id
+            """)
+    List<Tutor> aceitaramPromocoes(@Param("lojaId") Long lojaId);
+
     /** Cliente pelo WhatsApp (com ou sem o 55 na frente), para não duplicar cadastro. */
     @Query("""
             select t from Tutor t

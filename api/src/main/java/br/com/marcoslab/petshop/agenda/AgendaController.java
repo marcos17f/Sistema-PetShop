@@ -9,6 +9,7 @@ import br.com.marcoslab.petshop.financeiro.PrecoServico;
 import br.com.marcoslab.petshop.financeiro.PrecoServicoRepository;
 import br.com.marcoslab.petshop.loja.Loja;
 import br.com.marcoslab.petshop.loja.LojaService;
+import br.com.marcoslab.petshop.whatsapp.AvaliacaoService;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.AssertTrue;
@@ -75,10 +76,13 @@ public class AgendaController {
     private final PrecoServicoRepository precos;
     private final AuditoriaService auditoria;
     private final AgendaService regras;
+    private final AvaliacaoService avaliacao;
 
     public AgendaController(LojaService lojas, ClienteService clientes, AgendamentoRepository agenda,
-                            PrecoServicoRepository precos, AuditoriaService auditoria, AgendaService regras) {
+                            PrecoServicoRepository precos, AuditoriaService auditoria, AgendaService regras,
+                            AvaliacaoService avaliacao) {
         this.lojas = lojas;
+        this.avaliacao = avaliacao;
         this.regras = regras;
         this.auditoria = auditoria;
         this.precos = precos;
@@ -155,6 +159,9 @@ public class AgendaController {
         BigDecimal valorAntes = a.getValor();
         StatusAgendamento statusAntes = a.getStatus();
         a.mudarStatus(corpo.status(), valor);
+        if (statusAntes != StatusAgendamento.CONCLUIDO && a.getStatus() == StatusAgendamento.CONCLUIDO) {
+            avaliacao.depoisDoAtendimento(loja, a);
+        }
         boolean mudouValor = valorAntes == null ? a.getValor() != null : a.getValor().compareTo(valorAntes) != 0;
         boolean mudouReceita = mudouValor || (statusAntes == StatusAgendamento.CONCLUIDO) != (a.getStatus() == StatusAgendamento.CONCLUIDO);
         if (mudouReceita) { // só o que mexe na receita; sem nome de tutor (LGPD)

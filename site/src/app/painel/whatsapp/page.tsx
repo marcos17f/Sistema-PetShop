@@ -83,7 +83,7 @@ export default function WhatsApp() {
         onSubmit={(e) => {
           e.preventDefault();
           acao(async () => {
-            setS(await salvarWhatsapp({ lembretesAutomaticos: s.lembretesAutomaticos, respostaRapida: s.respostaRapida, textoRespostaRapida: s.textoRespostaRapida }));
+            setS(await salvarWhatsapp({ lembretesAutomaticos: s.lembretesAutomaticos, respostaRapida: s.respostaRapida, textoRespostaRapida: s.textoRespostaRapida, pedirAvaliacao: s.pedirAvaliacao }));
             return "Preferências salvas.";
           });
         }}
@@ -96,6 +96,14 @@ export default function WhatsApp() {
         <label className="flex items-start gap-2.5 text-[15px]">
           <input type="checkbox" className="mt-0.5 size-5 accent-verde" checked={s.respostaRapida} onChange={(e) => setS({ ...s, respostaRapida: e.target.checked })} />
           <span><b>Resposta rápida</b> · quem mandar mensagem recebe na hora o link do agendamento online (precisa do WhatsApp oficial).</span>
+        </label>
+        <label className="flex items-start gap-2.5 text-[15px]">
+          <input type="checkbox" className="mt-0.5 size-5 accent-verde" checked={s.pedirAvaliacao} disabled={!s.temLinkAvaliacao && !s.pedirAvaliacao}
+            onChange={(e) => setS({ ...s, pedirAvaliacao: e.target.checked })} />
+          <span>
+            <b>Pedir avaliação no Google</b> · depois do atendimento concluído, no máximo 1 vez a cada 90 dias por cliente.
+            {!s.temLinkAvaliacao && <span className="text-muted"> (Cadastre antes o link de avaliação em Configurações → Divulgação.)</span>}
+          </span>
         </label>
         <label className="flex flex-col gap-1.5">
           <span className="rotulo">Texto da resposta rápida ({"{link}"} vira o link do agendamento)</span>

@@ -9,7 +9,7 @@ import {
 import { hoje, somarDias, somarMeses } from "./datas";
 import { podeRepetir } from "./tipos";
 import type {
-  AplicacaoVacina, Agendamento, Aviso, ConfirmacaoOnline, PedidoOnline, ServicoPublico, Categoria, ConfigLoja, MensagemWhatsApp, ResultadoEnvio, SituacaoWhatsApp, TipoMensagem, Lancamento, Lembrete, Pet, PrecoServico, RegistroHistorico, Resumo, StatusAgendamento, TipoLancamento,
+  AplicacaoVacina, Agendamento, Aviso, Campanha, ConfirmacaoOnline, PedidoOnline, ServicoPublico, Categoria, ConfigLoja, MensagemWhatsApp, ResultadoEnvio, SituacaoWhatsApp, TipoMensagem, Lancamento, Lembrete, Pet, PrecoServico, RegistroHistorico, Resumo, StatusAgendamento, TipoLancamento,
   TipoServico, Tutor,
 } from "./tipos";
 
@@ -71,7 +71,7 @@ const espera = () => new Promise((r) => setTimeout(r, 150));
 
 /* ---------- clientes e pets ---------- */
 
-export type NovoTutor = Omit<Tutor, "id" | "pets">;
+export type NovoTutor = Omit<Tutor, "id" | "pets" | "promocoesDesde" | "saiuDasPromocoesEm">;
 export type NovoPet = Omit<Pet, "id" | "tutorId">;
 
 export async function listarTutores(busca = ""): Promise<Tutor[]> {
@@ -269,6 +269,7 @@ export async function mudarStatus(id: number, status: StatusAgendamento, valor?:
     const txt = (s: string, v: number | null) => `${s} · R$ ${v === null ? "-" : v.toFixed(2)}`;
     registrar("ALTEROU", "agendamento", id, txt(antes.status, antes.valor), txt(a.status, a.valor));
   }
+  if (antes.status !== "CONCLUIDO" && a.status === "CONCLUIDO") pedirAvaliacaoDemo(a.petId);
   // banho concluído atualiza o "último banho" do pet (mesma regra da API)
   if (status === "CONCLUIDO" && (a.tipo === "BANHO" || a.tipo === "BANHO_E_TOSA")) {
     const pet = db.pets.find((p) => p.id === a.petId)!;
@@ -449,10 +450,10 @@ export async function salvarConfig(c: ConfigLoja): Promise<ConfigLoja> {
 
 export async function buscarWhatsapp(): Promise<SituacaoWhatsApp> {
   if (!modoDemonstracao) return chamar(`/whatsapp`);
-  return { ...db.whatsapp };
+  return { ...db.whatsapp, temLinkAvaliacao: !!db.config.linkAvaliacao };
 }
 
-export async function salvarWhatsapp(p: Omit<SituacaoWhatsApp, "oficial">): Promise<SituacaoWhatsApp> {
+export async function salvarWhatsapp(p: Omit<SituacaoWhatsApp, "oficial" | "temLinkAvaliacao">): Promise<SituacaoWhatsApp> {
   if (!modoDemonstracao) return chamar(`/whatsapp`, { method: "PUT", body: JSON.stringify(p) });
   db.whatsapp = { ...db.whatsapp, ...p };
   return { ...db.whatsapp };
@@ -583,4 +584,65 @@ export async function agendarOnline(p: PedidoOnline): Promise<ConfirmacaoOnline>
   const mensagem = `Olá, ${p.nome.trim().split(/\s+/)[0]}! Recebemos seu agendamento: ${servico} do ${pet.nome} em ${dd}/${mm} às ${p.hora}${p.buscaMoto ? " (com busca de moto)" : ""}. A ${db.config.nome} confirma pelo WhatsApp.`;
   simular(local, "CONFIRMACAO", mensagem);
   return { data: `${dd}/${mm}`, hora: p.hora, servico, petNome: pet.nome, buscaMoto: p.buscaMoto, mensagem };
+}
+
+/* ---------- promoções e campanhas (LGPD: só quem aceitou) ---------- */
+
+/** Registra o aceite de promoções feito pela loja (cliente pediu pessoalmente) ou tira da lista. */
+export async function promocoesCliente(id: number, aceita: boolean): Promise<Tutor> {
+  if (!modoDemonstracao) return chamar(`/tutores/${id}/promocoes`, { method: "PUT", body: JSON.stringify({ aceita }) });
+  const t = db.tutores.find((x) => x.id === id && !x.removido)!;
+  const agora = new Date().toISOString();
+  if (aceita) Object.assign(t, { promocoesDesde: t.promocoesDesde ?? agora, saiuDasPromocoesEm: null, token: t.token ?? crypto.randomUUID().replace(/-/g, "") });
+  else Object.assign(t, { saiuDasPromocoesEm: t.promocoesDesde ? agora : t.saiuDasPromocoesEm, promocoesDesde: null });
+  registrar(aceita ? "CRIOU" : "EXCLUIU", "consentimento-promocoes", id, null, `cliente #${id} ${aceita ? "aceitou" : "saiu das"} promoções`);
+  return tutorCompleto(t);
+}
+
+export async function publicoCampanha(): Promise<number> {
+  if (!modoDemonstracao) return (await chamar<{ clientes: number }>(`/campanhas/publico`)).clientes;
+  return db.tutores.filter((t) => !t.removido && t.promocoesDesde && t.whatsapp).length;
+}
+
+export async function listarCampanhas(): Promise<Campanha[]> {
+  if (!modoDemonstracao) return chamar(`/campanhas`);
+  return db.campanhas.map(({ pendentes: _p, ...c }) => (void _p, c));
+}
+
+/** Cria a campanha para quem aceitou e envia (demonstração: simulada, sem limite diário). */
+export async function criarCampanha(titulo: string, texto: string, template: string): Promise<Campanha> {
+  if (!modoDemonstracao) return chamar(`/campanhas`, { method: "POST", body: JSON.stringify({ titulo, texto, template }) });
+  if (!/^[a-z0-9_]{1,80}$/.test(template)) throw new Error("Nome do modelo: só letras minúsculas, números e _");
+  const publico = db.tutores.filter((t) => !t.removido && t.promocoesDesde && t.whatsapp);
+  if (publico.length === 0) throw new Error("Nenhum cliente aceitou receber promoções ainda. A campanha só vai para quem aceitou (LGPD).");
+  for (const t of publico) {
+    simular(t.whatsapp, "CAMPANHA", `${texto}\n\nNão quer mais receber promoções? ${window.location.origin}/sair?t=${t.token}`);
+  }
+  const c = { id: novoId(), titulo, texto, status: "CONCLUIDA" as const, criadaEm: new Date().toISOString(), pendentes: [],
+    envios: { PENDENTE: 0, ENVIADA: 0, SIMULADA: publico.length, FALHOU: 0, PULADO: 0 } };
+  db.campanhas.unshift(c);
+  registrar("CRIOU", "campanha", c.id, null, `${titulo} · ${publico.length} clientes`);
+  return c;
+}
+
+/** Link "não quero mais receber" (página /sair). */
+export async function descadastrar(token: string): Promise<void> {
+  if (!modoDemonstracao) {
+    await fetch(`${API_URL}/api/publico/descadastro`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ token }) });
+    return;
+  }
+  const t = db.tutores.find((x) => x.token === token);
+  if (t?.promocoesDesde) Object.assign(t, { promocoesDesde: null, saiuDasPromocoesEm: new Date().toISOString() });
+}
+
+/** Demonstração: pedido de avaliação no Google depois do atendimento, 1 vez a cada 90 dias por cliente. */
+function pedirAvaliacaoDemo(petId: number) {
+  const link = db.config.linkAvaliacao;
+  if (!db.whatsapp.pedirAvaliacao || !link) return;
+  const pet = db.pets.find((p) => p.id === petId)!;
+  const t = db.tutores.find((x) => x.id === pet.tutorId)!;
+  const para = t.whatsapp.replace(/\D/g, "");
+  const noventaDias = Date.now() - 90 * 86_400_000;
+  if (db.mensagens.some((m) => m.tipo === "AVALIACAO" && m.para.endsWith(para) && Date.parse(m.criadoEm) > noventaDias)) return;
+  simular(t.whatsapp, "AVALIACAO", `Olá, ${t.nome.split(" ")[0]}! Obrigado por trazer o ${pet.nome} à ${db.config.nome}. Se puder, avalie nosso atendimento no Google: ${link}`);
 }

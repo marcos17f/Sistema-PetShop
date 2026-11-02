@@ -20,11 +20,13 @@ import static br.com.marcoslab.petshop.cliente.ClienteDtos.vazioParaNull;
 @RequestMapping("/api/lojas/{slug}/whatsapp")
 public class WhatsAppController {
 
-    public record Situacao(boolean oficial, boolean lembretesAutomaticos, boolean respostaRapida, String textoRespostaRapida) {
+    public record Situacao(boolean oficial, boolean lembretesAutomaticos, boolean respostaRapida, String textoRespostaRapida,
+                           boolean pedirAvaliacao, boolean temLinkAvaliacao) {
     }
 
     public record Preferencias(boolean lembretesAutomaticos, boolean respostaRapida,
-                               @Size(max = 500, message = "Use no máximo 500 caracteres") String textoRespostaRapida) {
+                               @Size(max = 500, message = "Use no máximo 500 caracteres") String textoRespostaRapida,
+                               boolean pedirAvaliacao) {
     }
 
     public record MensagemDto(Long id, String para, Tipo tipo, String texto, Status status, String erro, Instant criadoEm) {
@@ -48,14 +50,15 @@ public class WhatsAppController {
     public Situacao situacao(@PathVariable String slug) {
         Loja l = lojas.buscar(slug);
         return new Situacao(whatsapp.oficial(), l.isLembretesAutomaticos(), l.isRespostaRapida(),
-                l.getTextoRespostaRapida() == null ? "" : l.getTextoRespostaRapida());
+                l.getTextoRespostaRapida() == null ? "" : l.getTextoRespostaRapida(), l.isPedirAvaliacao(),
+                l.getLinkAvaliacao() != null);
     }
 
     @PutMapping
     @Transactional
     public Situacao preferencias(@PathVariable String slug, @Valid @RequestBody Preferencias p) {
         Loja l = repositorio.findById(lojas.buscar(slug).getId()).orElseThrow();
-        l.configurarWhatsapp(p.lembretesAutomaticos(), p.respostaRapida(), vazioParaNull(p.textoRespostaRapida()));
+        l.configurarWhatsapp(p.lembretesAutomaticos(), p.respostaRapida(), vazioParaNull(p.textoRespostaRapida()), p.pedirAvaliacao());
         return situacao(slug);
     }
 

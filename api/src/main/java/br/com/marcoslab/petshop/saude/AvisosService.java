@@ -154,7 +154,7 @@ public class AvisosService {
         if (senhaSemCriptografia) {
             lista.add(new Aviso(Nivel.ATENCAO, "Segurança", "Senha do painel sem criptografia",
                     "A senha está em texto puro na configuração do servidor (normal só no computador de desenvolvimento).",
-                    "Antes de publicar, gere a senha com bcrypt e coloque em PAINEL_SENHA (README, seção 6)."));
+                    "Antes de publicar, gere a senha com bcrypt e coloque em PAINEL_SENHA (README, seção 8)."));
         }
         int bloqueios = limiteDeLogin.bloqueiosUltimas24h();
         if (bloqueios > 0) {

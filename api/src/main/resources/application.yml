@@ -39,6 +39,9 @@ app:
     cron: "0 0 18 * * *"
   # Endereço público do site (vai no link da resposta rápida e das mensagens)
   site-url: ${SITE_URL:http://localhost:3001}
+  campanhas:
+    # A Meta limita números novos a ~250 conversas iniciadas pela empresa por dia; o resto continua no dia seguinte
+    limite-dia: ${CAMPANHAS_LIMITE_DIA:200}
   limites:
     # Avisos do sistema (tela Saúde do sistema): quando chegar perto destes limites, o painel avisa
     whatsapp-mensagens-mes: ${LIMITE_WHATSAPP_MES:1000}   # franquia/plano de mensagens enviadas por mês
@@ -52,6 +55,7 @@ app:
     api-url: ${WHATSAPP_API_URL:https://graph.facebook.com/v23.0}
     template-lembrete: ${WHATSAPP_TEMPLATE_LEMBRETE:lembrete_pet}
     template-confirmacao: ${WHATSAPP_TEMPLATE_CONFIRMACAO:confirmacao_agendamento}
+    template-avaliacao: ${WHATSAPP_TEMPLATE_AVALIACAO:avaliacao_atendimento}
     # Webhook (mensagens recebidas): segredo do app na Meta (confere a assinatura) e token de verificação
     app-secret: ${WHATSAPP_APP_SECRET:}
     verify-token: ${WHATSAPP_VERIFY_TOKEN:}

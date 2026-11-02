@@ -48,6 +48,11 @@ public class ClienteController {
         clientes.excluir(lojas.buscar(slug), id);
     }
 
+    @PutMapping("/{id}/promocoes")
+    public TutorDto promocoes(@PathVariable String slug, @PathVariable Long id, @RequestBody Promocoes dados) {
+        return clientes.promocoes(lojas.buscar(slug), id, dados.aceita());
+    }
+
     @PostMapping("/{id}/pets")
     @ResponseStatus(HttpStatus.CREATED)
     public PetDto criarPet(@PathVariable String slug, @PathVariable Long id, @Valid @RequestBody NovoPet dados) {

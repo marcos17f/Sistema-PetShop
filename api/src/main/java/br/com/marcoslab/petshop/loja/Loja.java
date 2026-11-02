@@ -69,6 +69,10 @@ public class Loja {
     @Column(name = "texto_resposta_rapida")
     private String textoRespostaRapida;
 
+    /** Depois do atendimento concluído, pede avaliação no Google (no máximo 1 vez a cada 90 dias por cliente). */
+    @Column(name = "pedir_avaliacao", nullable = false)
+    private boolean pedirAvaliacao;
+
     protected Loja() {
     }
 
@@ -89,7 +93,9 @@ public class Loja {
         this.sabadoFecha = sabadoFecha;
     }
 
-    public void configurarWhatsapp(boolean lembretesAutomaticos, boolean respostaRapida, String textoRespostaRapida) {
+    public void configurarWhatsapp(boolean lembretesAutomaticos, boolean respostaRapida, String textoRespostaRapida,
+                                   boolean pedirAvaliacao) {
+        this.pedirAvaliacao = pedirAvaliacao;
         this.lembretesAutomaticos = lembretesAutomaticos;
         this.respostaRapida = respostaRapida;
         this.textoRespostaRapida = textoRespostaRapida;
@@ -97,6 +103,7 @@ public class Loja {
 
     public boolean isLembretesAutomaticos() { return lembretesAutomaticos; }
     public boolean isRespostaRapida() { return respostaRapida; }
+    public boolean isPedirAvaliacao() { return pedirAvaliacao; }
     public String getTextoRespostaRapida() { return textoRespostaRapida; }
 
     public Long getId() { return id; }

@@ -21,6 +21,9 @@ export type Tutor = {
   cpf: string;
   origem: string;
   pets: Pet[];
+  /** LGPD: quando aceitou receber promoções (null = não aceitou) e quando pediu para sair. ISO. */
+  promocoesDesde: string | null;
+  saiuDasPromocoesEm: string | null;
 };
 
 export type AplicacaoVacina = {
@@ -177,7 +180,15 @@ export type ConfigLoja = {
 /* ---------- WhatsApp ---------- */
 
 /** oficial = Cloud API da Meta configurada no servidor; senão, modo simulado (nada sai; envio por clique). */
-export type SituacaoWhatsApp = { oficial: boolean; lembretesAutomaticos: boolean; respostaRapida: boolean; textoRespostaRapida: string };
+export type SituacaoWhatsApp = {
+  oficial: boolean;
+  lembretesAutomaticos: boolean;
+  respostaRapida: boolean;
+  textoRespostaRapida: string;
+  /** Pede avaliação no Google depois do atendimento (máx. 1 vez a cada 90 dias por cliente). */
+  pedirAvaliacao: boolean;
+  temLinkAvaliacao: boolean;
+};
 
 export type TipoMensagem = "LEMBRETE" | "CONFIRMACAO" | "RESPOSTA_RAPIDA" | "CAMPANHA" | "AVALIACAO" | "TESTE";
 
@@ -231,3 +242,16 @@ export type PedidoOnline = {
 };
 
 export type ConfirmacaoOnline = { data: string; hora: string; servico: string; petNome: string; buscaMoto: boolean; mensagem: string };
+
+/* ---------- campanhas (só para quem aceitou promoções) ---------- */
+
+export type StatusEnvio = "PENDENTE" | "ENVIADA" | "SIMULADA" | "FALHOU" | "PULADO";
+
+export type Campanha = {
+  id: number;
+  titulo: string;
+  texto: string;
+  status: "ENVIANDO" | "CONCLUIDA";
+  criadaEm: string;
+  envios: Record<StatusEnvio, number>;
+};

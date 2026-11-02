@@ -87,6 +87,17 @@ public class ClienteService {
         }
     }
 
+    /** Aceite de promoções registrado pela loja (cliente pediu pessoalmente) ou saída da lista. Vai para o histórico. */
+    @Transactional
+    public TutorDto promocoes(Loja loja, Long id, boolean aceita) {
+        Tutor t = tutorDaLoja(loja, id);
+        if (aceita) t.aceitarPromocoes(clock.instant());
+        else t.sairDasPromocoes(clock.instant());
+        auditoria.registrar(loja, aceita ? Acao.CRIOU : Acao.EXCLUIU, "consentimento-promocoes", id, null,
+                aceita ? "cliente #" + id + " aceitou promoções" : "cliente #" + id + " saiu das promoções");
+        return TutorDto.de(t);
+    }
+
     @Transactional
     public PetDto criarPet(Loja loja, Long tutorId, NovoPet dados) {
         Tutor tutor = tutorDaLoja(loja, tutorId);

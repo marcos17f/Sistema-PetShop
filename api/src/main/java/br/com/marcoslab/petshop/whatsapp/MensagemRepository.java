@@ -40,6 +40,14 @@ public interface MensagemRepository extends JpaRepository<MensagemWhatsApp, Long
     boolean enviadaDesde(@Param("lojaId") Long lojaId, @Param("para") String para,
                          @Param("tipo") MensagemWhatsApp.Tipo tipo, @Param("desde") Instant desde);
 
+    /** Mensagens de um tipo que saíram (ou foram simuladas) desde um instante: limite diário das campanhas. */
+    @Query("""
+            select count(m) from MensagemWhatsApp m
+            where m.loja.id = :lojaId and m.tipo = :tipo and m.criadoEm >= :desde
+              and m.status <> br.com.marcoslab.petshop.whatsapp.MensagemWhatsApp.Status.FALHOU
+            """)
+    long contarTipo(@Param("lojaId") Long lojaId, @Param("tipo") MensagemWhatsApp.Tipo tipo, @Param("desde") Instant desde);
+
     @Modifying
     @Query("delete from MensagemWhatsApp m where m.criadoEm < :antes")
     int apagarAntesDe(@Param("antes") Instant antes);

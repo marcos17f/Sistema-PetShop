@@ -22,3 +22,5 @@ app:
     token: ""
     phone-number-id: ""
     limpeza-cron: "-"
+  campanhas:
+    cron: "-"

@@ -7,7 +7,7 @@ import { formatar, hoje, mesAtual, mesmoDiaNoProximoMes, proximoBanho, somarDias
 import {
   NOMES_SERVICO,
   type AplicacaoVacina, type Agendamento, type Categoria, type Lancamento, type Lembrete, type Pet, type PrecoServico,
-  type ConfigLoja, type MensagemWhatsApp, type RegistroHistorico, type SituacaoWhatsApp, type ResumoMes, type TipoLancamento, type TipoServico, type Tutor,
+  type Campanha, type ConfigLoja, type MensagemWhatsApp, type RegistroHistorico, type SituacaoWhatsApp, type ResumoMes, type TipoLancamento, type TipoServico, type Tutor,
 } from "./tipos";
 
 const H = hoje();
@@ -15,6 +15,10 @@ const amanha = somarDias(H, 1);
 
 let seq = 5000; // acima dos ids de exemplo
 const novoId = () => ++seq;
+
+/** Cliente guardado na demonstração (campos de promoções opcionais nos exemplos). */
+export type TutorDemo = Omit<Tutor, "pets" | "promocoesDesde" | "saiuDasPromocoesEm"> &
+  Partial<Pick<Tutor, "promocoesDesde" | "saiuDasPromocoesEm">> & { removido?: boolean; token?: string };
 
 /** Agendamento guardado na demonstração: canal e busca de moto são opcionais (os exemplos antigos não têm). */
 export type AgendamentoDemo = Omit<Agendamento, "petNome" | "tutorNome" | "canal" | "buscaMoto" | "enderecoBusca"> &
@@ -96,7 +100,7 @@ export const db = {
     { id: 1, nome: "Felipe Santos", whatsapp: "(62) 99999-0000", endereco: "Rua das Flores, 120 · Centro", cpf: "", origem: "Instagram" },
     { id: 2, nome: "Mariana Costa", whatsapp: "(62) 98888-1111", endereco: "Av. Principal, 45", cpf: "", origem: "Google" },
     { id: 3, nome: "Ricardo Alves", whatsapp: "(62) 97777-2222", endereco: "Rua Nova, 300", cpf: "", origem: "Indicação" },
-  ] as (Omit<Tutor, "pets"> & { removido?: boolean })[],
+  ] as TutorDemo[],
   pets: [
     { id: 11, tutorId: 1, nome: "Thor", especie: "Cão", raca: "Golden Retriever", pesoKg: 31, observacoes: "Agitado no secador. Usar shampoo hipoalergênico.", intervaloBanhoDias: 15, ultimoBanho: somarDias(H, -14) },
     { id: 12, tutorId: 1, nome: "Mel", especie: "Gato", raca: "SRD", pesoKg: 4, observacoes: "Arisca com estranhos. Atender em sala separada.", intervaloBanhoDias: 30, ultimoBanho: somarDias(H, -20) },
@@ -120,8 +124,9 @@ export const db = {
   ] as AgendamentoDemo[],
   enviados: new Set<string>(),
   config: { ...configExemplo } as ConfigLoja,
-  whatsapp: { oficial: false, lembretesAutomaticos: false, respostaRapida: false, textoRespostaRapida: "" } as SituacaoWhatsApp,
+  whatsapp: { oficial: false, lembretesAutomaticos: false, respostaRapida: false, textoRespostaRapida: "", pedirAvaliacao: false, temLinkAvaliacao: false } as SituacaoWhatsApp,
   mensagens: [] as (MensagemWhatsApp & { chave: string | null })[],
+  campanhas: [] as (Campanha & { pendentes: number[] })[],
   /* financeiro (mesmos valores de exemplo da migration V3) */
   precos: [
     { tipo: "BANHO", valor: 50 }, { tipo: "TOSA", valor: 60 }, { tipo: "BANHO_E_TOSA", valor: 90 },
@@ -147,8 +152,11 @@ export function comNomes(a: AgendamentoDemo): Agendamento {
   return { canal: "PAINEL", buscaMoto: false, enderecoBusca: "", ...a, petNome: pet.nome, tutorNome: tutor.nome };
 }
 
-export function tutorCompleto(t: Omit<Tutor, "pets">): Tutor {
-  return { ...t, pets: db.pets.filter((p) => p.tutorId === t.id) };
+export function tutorCompleto(t: TutorDemo): Tutor {
+  const { removido: _r, token: _t, ...dados } = t;
+  void _r;
+  void _t;
+  return { promocoesDesde: null, saiuDasPromocoesEm: null, ...dados, pets: db.pets.filter((p) => p.tutorId === t.id) };
 }
 
 export { novoId };

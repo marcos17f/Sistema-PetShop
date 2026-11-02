@@ -37,6 +37,13 @@ public class Tutor {
     @Column(name = "consentimento_marketing_em")
     private Instant consentimentoMarketingEm;
 
+    /** Link pessoal de "não quero mais receber" (aleatório, impossível de adivinhar). */
+    @Column(name = "token_descadastro")
+    private String tokenDescadastro;
+
+    @Column(name = "descadastrado_em")
+    private Instant descadastradoEm;
+
     /** Preenchido quando o cliente é excluído mas tinha atendimento concluído (dados pessoais apagados). */
     @Column(name = "removido_em")
     private Instant removidoEm;
@@ -68,6 +75,8 @@ public class Tutor {
 
     /** LGPD: apaga os dados pessoais e mantém o registro, para os valores já recebidos continuarem no financeiro. */
     public void anonimizar(Instant agora) {
+        this.consentimentoMarketingEm = null;
+        this.tokenDescadastro = null;
         this.nome = "Cliente removido";
         this.whatsapp = "";
         this.endereco = null;
@@ -76,12 +85,28 @@ public class Tutor {
         this.removidoEm = agora;
     }
 
-    /** Registra o aceite de promoções (só a primeira data; sair da lista é pelo link de descadastro). */
+    /** Registra o aceite de promoções (mantém a primeira data) e cria o link pessoal de descadastro. */
     public void aceitarPromocoes(Instant quando) {
         if (consentimentoMarketingEm == null) this.consentimentoMarketingEm = quando;
+        this.descadastradoEm = null;
+        if (tokenDescadastro == null) {
+            byte[] b = new byte[16];
+            ALEATORIO.nextBytes(b);
+            this.tokenDescadastro = java.util.HexFormat.of().formatHex(b);
+        }
     }
 
+    /** Sai da lista de promoções; a data fica registrada como prova (LGPD). */
+    public void sairDasPromocoes(Instant quando) {
+        if (consentimentoMarketingEm != null) this.descadastradoEm = quando;
+        this.consentimentoMarketingEm = null;
+    }
+
+    private static final java.security.SecureRandom ALEATORIO = new java.security.SecureRandom();
+
     public Instant getConsentimentoMarketingEm() { return consentimentoMarketingEm; }
+    public Instant getDescadastradoEm() { return descadastradoEm; }
+    public String getTokenDescadastro() { return tokenDescadastro; }
 
     public Long getId() { return id; }
     public Loja getLoja() { return loja; }
