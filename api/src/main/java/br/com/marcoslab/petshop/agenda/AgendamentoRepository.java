@@ -18,12 +18,15 @@ public interface AgendamentoRepository extends JpaRepository<Agendamento, Long> 
             """)
     List<Agendamento> doDia(@Param("lojaId") Long lojaId, @Param("data") LocalDate data);
 
+    /** Um atendimento por horário na loja (de qualquer cliente). Cancelado libera o horário; id = quem está sendo reativado. */
     @Query("""
             select count(a) > 0 from Agendamento a
-            where a.pet.id = :petId and a.data = :data and a.hora = :hora
+            where a.loja.id = :lojaId and a.data = :data and a.hora = :hora
               and a.status <> br.com.marcoslab.petshop.agenda.StatusAgendamento.CANCELADO
+              and (:id is null or a.id <> :id)
             """)
-    boolean petOcupado(@Param("petId") Long petId, @Param("data") LocalDate data, @Param("hora") LocalTime hora);
+    boolean horarioOcupado(@Param("lojaId") Long lojaId, @Param("data") LocalDate data, @Param("hora") LocalTime hora,
+                           @Param("id") Long id);
 
     @Query("select a from Agendamento a join fetch a.pet p join fetch p.tutor where a.id = :id and a.loja.id = :lojaId")
     Optional<Agendamento> buscarNaLoja(@Param("id") Long id, @Param("lojaId") Long lojaId);

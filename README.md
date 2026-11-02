@@ -69,7 +69,7 @@ Base: `/api/lojas/{slug}`
 | POST | `/tutores/{id}/pets` | Novo pet |
 | GET/POST | `/pets/{petId}/vacinas` | Carteira de vacinação |
 | GET | `/agenda?data=yyyy-MM-dd` | Agenda do dia |
-| POST | `/agenda` | Novo agendamento (recusa o mesmo pet no mesmo horário) |
+| POST | `/agenda` | Novo agendamento. **Um atendimento por horário** (de qualquer cliente); cancelado libera o horário |
 | PATCH | `/agenda/{id}/status` | Muda status e, opcional, `valor` cobrado. Concluir sem valor usa o preço padrão do serviço. Banho concluído atualiza o "último banho" do pet |
 | GET | `/lembretes?data=` | Lembretes do dia (agendamentos, reforço de vacina, retorno de banho) |
 | POST | `/lembretes/enviados` | Marca lembrete como enviado |

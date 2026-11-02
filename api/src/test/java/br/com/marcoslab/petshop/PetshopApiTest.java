@@ -106,7 +106,7 @@ class PetshopApiTest {
                         {"petId":%d,"data":"%s","hora":"09:30","tipo":"TOSA"}
                         """.formatted(petId, dia)))
                 .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.detail").value("Esse pet já tem atendimento nesse horário."));
+                .andExpect(jsonPath("$.detail").value("Já existe um atendimento nesse horário. Escolha outro horário."));
 
         mvc.perform(logado(get(BASE + "/agenda").param("data", dia.toString())))
                 .andExpect(jsonPath("$[0].hora").value("09:30"))

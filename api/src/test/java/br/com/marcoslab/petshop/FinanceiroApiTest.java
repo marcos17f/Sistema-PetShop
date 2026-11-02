@@ -244,6 +244,38 @@ class FinanceiroApiTest {
     }
 
     @Test
+    void umAtendimentoPorHorarioMesmoDeOutroCliente() throws Exception {
+        long thor = novoPet();
+        long tutor2 = criar("/tutores", """
+                {"nome":"Bruno Lima","whatsapp":"(62) 98888-0000"}
+                """).get("id").asLong();
+        long luna = criar("/tutores/" + tutor2 + "/pets", """
+                {"nome":"Luna","especie":"Gato"}
+                """).get("id").asLong();
+        String agendar = """
+                {"petId":%d,"data":"2026-03-02","hora":"10:00","tipo":"BANHO"}
+                """;
+
+        long idThor = criar("/agenda", agendar.formatted(thor)).get("id").asLong();
+        // outro cliente, mesmo dia e horário: recusado
+        mvc.perform(logado(post(BASE + "/agenda")).content(agendar.formatted(luna)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.detail").value("Já existe um atendimento nesse horário. Escolha outro horário."));
+        // outro horário no mesmo dia: pode
+        criar("/agenda", agendar.replace("10:00", "11:00").formatted(luna));
+
+        // cancelar libera o horário para outra pessoa
+        mvc.perform(logado(patch(BASE + "/agenda/" + idThor + "/status")).content("{\"status\":\"CANCELADO\"}"))
+                .andExpect(status().isOk());
+        criar("/agenda", agendar.formatted(luna).replace("BANHO", "TOSA"));
+
+        // reativar o cancelado num horário que já foi ocupado: recusado
+        mvc.perform(logado(patch(BASE + "/agenda/" + idThor + "/status")).content("{\"status\":\"CONFIRMADO\"}"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.detail").value("Já existe um atendimento nesse horário. Escolha outro horário."));
+    }
+
+    @Test
     void dataForaDoPeriodoEhRecusada() throws Exception {
         mvc.perform(logado(post(BASE + "/financeiro/lancamentos")).content("""
                         {"data":"1900-01-05","categoriaId":%d,"valor":10,"recorrente":true}

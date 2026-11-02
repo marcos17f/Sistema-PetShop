@@ -132,8 +132,9 @@ export async function listarAgenda(data: string): Promise<Agendamento[]> {
 
 export async function criarAgendamento(dados: NovoAgendamento): Promise<Agendamento> {
   if (!modoDemonstracao) return chamar(`/agenda`, { method: "POST", body: JSON.stringify(dados) });
-  const conflito = db.agendamentos.some((a) => a.data === dados.data && a.hora === dados.hora && a.petId === dados.petId && a.status !== "CANCELADO");
-  if (conflito) throw new Error("Esse pet já tem atendimento nesse horário.");
+  // um atendimento por horário, de qualquer cliente (mesma regra da API)
+  const conflito = db.agendamentos.some((a) => a.data === dados.data && a.hora === dados.hora && a.status !== "CANCELADO");
+  if (conflito) throw new Error("Já existe um atendimento nesse horário. Escolha outro horário.");
   const a = { ...dados, id: novoId(), status: "AGUARDANDO" as StatusAgendamento, valor: null };
   db.agendamentos.push(a);
   return comNomes(a);
@@ -143,6 +144,8 @@ export async function criarAgendamento(dados: NovoAgendamento): Promise<Agendame
 export async function mudarStatus(id: number, status: StatusAgendamento, valor?: number): Promise<Agendamento> {
   if (!modoDemonstracao) return chamar(`/agenda/${id}/status`, { method: "PATCH", body: JSON.stringify({ status, valor }) });
   const a = db.agendamentos.find((x) => x.id === id)!;
+  const ocupado = db.agendamentos.some((x) => x.id !== id && x.data === a.data && x.hora === a.hora && x.status !== "CANCELADO");
+  if (a.status === "CANCELADO" && status !== "CANCELADO" && ocupado) throw new Error("Já existe um atendimento nesse horário. Escolha outro horário.");
   const antes = { status: a.status, valor: a.valor };
   a.status = status;
   if (valor !== undefined) a.valor = valor;

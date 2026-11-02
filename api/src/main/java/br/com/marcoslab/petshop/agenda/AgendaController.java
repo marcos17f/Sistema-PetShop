@@ -54,6 +54,8 @@ public class AgendaController {
         }
     }
 
+    static final String HORARIO_OCUPADO = "Já existe um atendimento nesse horário. Escolha outro horário.";
+
     private final LojaService lojas;
     private final ClienteService clientes;
     private final AgendamentoRepository agenda;
@@ -84,8 +86,8 @@ public class AgendaController {
     public AgendamentoDto criar(@PathVariable String slug, @Valid @RequestBody NovoAgendamento dados) {
         Loja loja = lojas.buscar(slug);
         Pet pet = clientes.petDaLoja(loja, dados.petId());
-        if (agenda.petOcupado(pet.getId(), dados.data(), dados.hora())) {
-            throw new Erros.Conflito("Esse pet já tem atendimento nesse horário.");
+        if (agenda.horarioOcupado(loja.getId(), dados.data(), dados.hora(), null)) {
+            throw new Erros.Conflito(HORARIO_OCUPADO);
         }
         String descricao = dados.descricao() == null || dados.descricao().isBlank() ? null : dados.descricao().trim();
         Agendamento a = agenda.save(new Agendamento(loja, pet, dados.data(), dados.hora(), dados.tipo(), descricao, clock.instant()));
@@ -102,6 +104,10 @@ public class AgendaController {
         BigDecimal valor = corpo.valor();
         if (valor == null && a.getValor() == null && corpo.status() == StatusAgendamento.CONCLUIDO) {
             valor = precos.findByLojaIdAndTipoServico(lojaId, a.getTipo()).map(PrecoServico::getValor).orElse(null);
+        }
+        if (a.getStatus() == StatusAgendamento.CANCELADO && corpo.status() != StatusAgendamento.CANCELADO
+                && agenda.horarioOcupado(lojaId, a.getData(), a.getHora(), a.getId())) {
+            throw new Erros.Conflito(HORARIO_OCUPADO); // reativar um cancelado num horário que já foi ocupado
         }
         BigDecimal valorAntes = a.getValor();
         StatusAgendamento statusAntes = a.getStatus();
