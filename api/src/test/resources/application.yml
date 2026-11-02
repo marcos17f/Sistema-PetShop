@@ -19,4 +19,6 @@ app:
   lembrete:
     cron: "-"
   whatsapp:
-    automatico: false
+    token: ""
+    phone-number-id: ""
+    limpeza-cron: "-"

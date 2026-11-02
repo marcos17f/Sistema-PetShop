@@ -11,6 +11,7 @@ const menu = [
   { href: "/painel/clientes", texto: "Clientes e pets" },
   { href: "/painel/lembretes", texto: "Lembretes no WhatsApp" },
   { href: "/painel/financeiro", texto: "Financeiro" },
+  { href: "/painel/whatsapp", texto: "WhatsApp" },
   { href: "/painel/configuracoes", texto: "Configurações" },
 ];
 

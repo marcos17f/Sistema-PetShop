@@ -6,10 +6,10 @@ import { loja } from "./loja";
 import {
   calcularLembretes, calcularResumoMes, comNomes, db, descrever, garantirRecorrentes, novoId, registrar, tutorCompleto, type LancamentoDemo,
 } from "./demo";
-import { hoje, somarMeses } from "./datas";
+import { hoje, somarDias, somarMeses } from "./datas";
 import { podeRepetir } from "./tipos";
 import type {
-  AplicacaoVacina, Agendamento, Categoria, ConfigLoja, Lancamento, Lembrete, Pet, PrecoServico, RegistroHistorico, Resumo, StatusAgendamento, TipoLancamento,
+  AplicacaoVacina, Agendamento, Categoria, ConfigLoja, MensagemWhatsApp, ResultadoEnvio, SituacaoWhatsApp, TipoMensagem, Lancamento, Lembrete, Pet, PrecoServico, RegistroHistorico, Resumo, StatusAgendamento, TipoLancamento,
   TipoServico, Tutor,
 } from "./tipos";
 
@@ -442,4 +442,50 @@ export async function salvarConfig(c: ConfigLoja): Promise<ConfigLoja> {
   registrar("ALTEROU", "configuracoes", 1, null, "configurações da loja");
   db.config = { ...c, whatsapp: c.whatsapp.replace(/\D/g, ""), instagram: c.instagram.replace(/^@/, "") };
   return { ...db.config };
+}
+
+/* ---------- WhatsApp ---------- */
+
+export async function buscarWhatsapp(): Promise<SituacaoWhatsApp> {
+  if (!modoDemonstracao) return chamar(`/whatsapp`);
+  return { ...db.whatsapp };
+}
+
+export async function salvarWhatsapp(p: Omit<SituacaoWhatsApp, "oficial">): Promise<SituacaoWhatsApp> {
+  if (!modoDemonstracao) return chamar(`/whatsapp`, { method: "PUT", body: JSON.stringify(p) });
+  db.whatsapp = { ...db.whatsapp, ...p };
+  return { ...db.whatsapp };
+}
+
+export async function listarMensagens(): Promise<MensagemWhatsApp[]> {
+  if (!modoDemonstracao) return chamar(`/whatsapp/mensagens`);
+  return db.mensagens.slice(0, 100).map(({ chave: _c, ...m }) => (void _c, m));
+}
+
+/** Demonstração: sempre simulada (nada sai), igual à API sem a Cloud API configurada. */
+function simular(para: string, tipo: TipoMensagem, texto: string, chave: string | null = null): MensagemWhatsApp {
+  const d = para.replace(/\D/g, "");
+  const m = { id: novoId(), para: d.length === 10 || d.length === 11 ? `55${d}` : d, tipo, texto, status: "SIMULADA" as const,
+    erro: null, criadoEm: new Date().toISOString(), chave };
+  db.mensagens.unshift(m);
+  return m;
+}
+
+export async function enviarTesteWhatsapp(): Promise<MensagemWhatsApp> {
+  if (!modoDemonstracao) return chamar(`/whatsapp/teste`, { method: "POST" });
+  return simular(db.config.whatsapp, "TESTE", `Teste do sistema ${db.config.nome}: o WhatsApp está funcionando.`);
+}
+
+/** Roda agora o envio das 18h (lembretes de amanhã); o mesmo lembrete não sai duas vezes. */
+export async function lembretesAgora(): Promise<ResultadoEnvio> {
+  if (!modoDemonstracao) return chamar(`/whatsapp/lembretes-agora`, { method: "POST" });
+  const r = { enviadas: 0, simuladas: 0, falhas: 0, jaFeitas: 0 };
+  for (const l of calcularLembretes(somarDias(hoje(), 1))) {
+    if (l.enviado || db.mensagens.some((m) => m.chave === l.chave)) r.jaFeitas++;
+    else {
+      simular(l.whatsapp, "LEMBRETE", l.mensagem, l.chave);
+      r.simuladas++;
+    }
+  }
+  return r;
 }

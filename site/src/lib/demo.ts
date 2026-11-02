@@ -7,7 +7,7 @@ import { formatar, hoje, mesAtual, mesmoDiaNoProximoMes, proximoBanho, somarDias
 import {
   NOMES_SERVICO,
   type AplicacaoVacina, type Agendamento, type Categoria, type Lancamento, type Lembrete, type Pet, type PrecoServico,
-  type ConfigLoja, type RegistroHistorico, type ResumoMes, type TipoLancamento, type TipoServico, type Tutor,
+  type ConfigLoja, type MensagemWhatsApp, type RegistroHistorico, type SituacaoWhatsApp, type ResumoMes, type TipoLancamento, type TipoServico, type Tutor,
 } from "./tipos";
 
 const H = hoje();
@@ -116,6 +116,8 @@ export const db = {
   ] as Omit<Agendamento, "petNome" | "tutorNome">[],
   enviados: new Set<string>(),
   config: { ...configExemplo } as ConfigLoja,
+  whatsapp: { oficial: false, lembretesAutomaticos: false, respostaRapida: false, textoRespostaRapida: "" } as SituacaoWhatsApp,
+  mensagens: [] as (MensagemWhatsApp & { chave: string | null })[],
   /* financeiro (mesmos valores de exemplo da migration V3) */
   precos: [
     { tipo: "BANHO", valor: 50 }, { tipo: "TOSA", valor: 60 }, { tipo: "BANHO_E_TOSA", valor: 90 },

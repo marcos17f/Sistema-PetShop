@@ -58,6 +58,17 @@ public class Loja {
     @Column(name = "sabado_fecha")
     private LocalTime sabadoFecha;
 
+    /** Lembretes de amanhã enviados sozinhos às 18h (no modo simulado, ficam registrados na tela WhatsApp). */
+    @Column(name = "lembretes_automaticos", nullable = false)
+    private boolean lembretesAutomaticos;
+
+    /** Responde sozinho a quem manda mensagem, com o link do agendamento online. */
+    @Column(name = "resposta_rapida", nullable = false)
+    private boolean respostaRapida;
+
+    @Column(name = "texto_resposta_rapida")
+    private String textoRespostaRapida;
+
     protected Loja() {
     }
 
@@ -77,6 +88,16 @@ public class Loja {
         this.sabadoAbre = sabadoAbre;
         this.sabadoFecha = sabadoFecha;
     }
+
+    public void configurarWhatsapp(boolean lembretesAutomaticos, boolean respostaRapida, String textoRespostaRapida) {
+        this.lembretesAutomaticos = lembretesAutomaticos;
+        this.respostaRapida = respostaRapida;
+        this.textoRespostaRapida = textoRespostaRapida;
+    }
+
+    public boolean isLembretesAutomaticos() { return lembretesAutomaticos; }
+    public boolean isRespostaRapida() { return respostaRapida; }
+    public String getTextoRespostaRapida() { return textoRespostaRapida; }
 
     public Long getId() { return id; }
     public String getSlug() { return slug; }

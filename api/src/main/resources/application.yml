@@ -29,6 +29,10 @@ app:
   lembrete:
     cron: "0 0 18 * * *"
   whatsapp:
-    # false = lembretes enviados por clique no painel (custo zero).
-    # true  = envio automático às 18h (precisa implementar o envio com a API oficial em NotificadorWhatsApp).
-    automatico: ${WHATSAPP_AUTOMATICO:false}
+    # WhatsApp Cloud API OFICIAL (Meta). Sem token e phone-number-id, o sistema fica no modo SIMULADO:
+    # nada sai, e a tela WhatsApp do painel mostra cada mensagem com botão para mandar por clique.
+    # O token é segredo: só em variável de ambiente, nunca no banco, na tela ou no Git.
+    token: ${WHATSAPP_TOKEN:}
+    phone-number-id: ${WHATSAPP_PHONE_NUMBER_ID:}
+    api-url: ${WHATSAPP_API_URL:https://graph.facebook.com/v23.0}
+    template-lembrete: ${WHATSAPP_TEMPLATE_LEMBRETE:lembrete_pet}

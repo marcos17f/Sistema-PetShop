@@ -168,3 +168,31 @@ export type ConfigLoja = {
   sabadoAbre: string | null;
   sabadoFecha: string | null;
 };
+
+/* ---------- WhatsApp ---------- */
+
+/** oficial = Cloud API da Meta configurada no servidor; senão, modo simulado (nada sai; envio por clique). */
+export type SituacaoWhatsApp = { oficial: boolean; lembretesAutomaticos: boolean; respostaRapida: boolean; textoRespostaRapida: string };
+
+export type TipoMensagem = "LEMBRETE" | "CONFIRMACAO" | "RESPOSTA_RAPIDA" | "CAMPANHA" | "AVALIACAO" | "TESTE";
+
+export type MensagemWhatsApp = {
+  id: number;
+  para: string;
+  tipo: TipoMensagem;
+  texto: string;
+  status: "SIMULADA" | "ENVIADA" | "FALHOU";
+  erro: string | null;
+  criadoEm: string;
+};
+
+export type ResultadoEnvio = { enviadas: number; simuladas: number; falhas: number; jaFeitas: number };
+
+export const NOMES_MENSAGEM: Record<TipoMensagem, string> = {
+  LEMBRETE: "Lembrete",
+  CONFIRMACAO: "Confirmação",
+  RESPOSTA_RAPIDA: "Resposta rápida",
+  CAMPANHA: "Campanha",
+  AVALIACAO: "Avaliação",
+  TESTE: "Teste",
+};

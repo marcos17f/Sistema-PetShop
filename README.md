@@ -55,7 +55,10 @@ Login do painel: usuário `loja`, senha `troque-esta-senha` (padrão de desenvol
 | `PAINEL_SENHA` | `{noop}troque-esta-senha` | Senha. **Em produção use `{bcrypt}<hash>`** |
 | `PAINEL_LOJA` | `petshop-cleiton` | Slug da loja que esse login acessa |
 | `CORS_ORIGENS` | `http://localhost:3000` | Endereço do site (separe vários por vírgula) |
-| `WHATSAPP_AUTOMATICO` | `false` | Liga o disparo automático às 18h |
+| `WHATSAPP_TOKEN` | vazio | Token da WhatsApp Cloud API (segredo: só aqui, nunca no banco/tela/Git). Vazio = modo simulado |
+| `WHATSAPP_PHONE_NUMBER_ID` | vazio | Id do número na Meta (WhatsApp → Configuração da API) |
+| `WHATSAPP_API_URL` | `https://graph.facebook.com/v23.0` | Versão da Graph API (atualizar quando a Meta descontinuar a versão) |
+| `WHATSAPP_TEMPLATE_LEMBRETE` | `lembrete_pet` | Nome do modelo de lembrete aprovado na Meta |
 
 ## 3. Endpoints (todos com HTTP Basic)
 
@@ -90,10 +93,30 @@ Base: `/api/lojas/{slug}`
 
 Erros seguem o padrão RFC 7807 (`detail` com a mensagem; `campos` nos erros de validação).
 
-## 4. Lembretes por WhatsApp
+## 4. WhatsApp
 
-- **Padrão (custo zero):** a tela *Lembretes* do painel lista as mensagens de amanhã; um clique abre o WhatsApp já com o texto e marca como enviado.
-- **Automático (opcional):** implemente `NotificadorWhatsApp` com a WhatsApp Cloud API (template "utility", cerca de R$0,035 por mensagem fora da janela de 24h), marque com `@Primary` e ligue `WHATSAPP_AUTOMATICO=true`. Não use bibliotecas não oficiais: o número pode ser banido.
+Tela **Painel → WhatsApp**: modo (simulado ou oficial), lembretes automáticos às 18h, resposta rápida, mensagem de teste,
+"rodar lembretes de amanhã agora" e as últimas mensagens (guardadas por 90 dias, LGPD).
+
+- **Modo simulado (padrão, custo zero):** sem `WHATSAPP_TOKEN`, nada sai. Cada mensagem fica registrada na tela com o botão
+  **Abrir no WhatsApp** para a loja mandar por clique. A tela *Lembretes* continua funcionando igual.
+- **Modo oficial (WhatsApp Cloud API da Meta):** defina `WHATSAPP_TOKEN` e `WHATSAPP_PHONE_NUMBER_ID` no servidor e reinicie.
+  Passo a passo: [Meta for Developers](https://developers.facebook.com/) → criar app *Business* → produto **WhatsApp** →
+  usar o **número de teste** (manda grátis para até 5 números cadastrados) para validar → depois registrar o número da loja e
+  gerar um **token permanente** (usuário do sistema no Gerenciador de Negócios). Nunca use bibliotecas não oficiais
+  (whatsapp-web.js, Baileys...): o número é banido.
+- **Modelo para aprovar na Meta** (WhatsApp → Modelos de mensagem):
+
+  | Nome | Categoria | Idioma | Corpo |
+  |---|---|---|---|
+  | `lembrete_pet` | Utilidade | Português (BR) | `Lembrete de {{1}}: {{2}} Responda esta mensagem para confirmar ou remarcar.` |
+
+  `{{1}}` = nome da loja, `{{2}}` = texto do lembrete (ex.: "Olá, Ana! Amanhã é dia da vacina V10 do Thor.").
+- **Custos:** a Meta cobra por mensagem de modelo (lembrete = utilidade; campanha = marketing) e as regras mudaram em
+  2025/2026 (franquia mensal grátis de mensagens de atendimento, janela grátis de 72 h para quem vem de anúncio
+  clique-para-WhatsApp). Confira a tabela atual em
+  [Preços da WhatsApp Business Platform](https://developers.facebook.com/documentation/business-messaging/whatsapp/pricing)
+  antes de ligar o envio automático. Para começar sem custo: modo simulado (envio por clique) + número de teste da Meta.
 
 ## 5. Financeiro
 
