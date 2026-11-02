@@ -13,6 +13,8 @@ import org.springframework.security.crypto.factory.PasswordEncoderFactories;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.www.BasicAuthenticationFilter;
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -29,8 +31,9 @@ import java.util.List;
 public class SegurancaConfig {
 
     @Bean
-    public SecurityFilterChain filtro(HttpSecurity http) throws Exception {
+    public SecurityFilterChain filtro(HttpSecurity http, LimiteDeLogin limiteDeLogin) throws Exception {
         http
+                .addFilterBefore(limiteDeLogin, BasicAuthenticationFilter.class)
                 .csrf(c -> c.disable()) // API sem cookie de sessão: CSRF não se aplica
                 .cors(Customizer.withDefaults())
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
@@ -42,6 +45,14 @@ public class SegurancaConfig {
                 // 401 sem o cabeçalho WWW-Authenticate, para o navegador não abrir a janela nativa de login
                 .httpBasic(b -> b.authenticationEntryPoint((req, res, e) -> res.sendError(401)));
         return http.build();
+    }
+
+    /** O limite de login roda só dentro da cadeia de segurança (sem isso o Spring Boot o registraria duas vezes). */
+    @Bean
+    public FilterRegistrationBean<LimiteDeLogin> naoRegistrarLimiteDeLoginDeNovo(LimiteDeLogin filtro) {
+        FilterRegistrationBean<LimiteDeLogin> r = new FilterRegistrationBean<>(filtro);
+        r.setEnabled(false);
+        return r;
     }
 
     @Bean

@@ -36,6 +36,7 @@ export async function entrar(usuario: string, senha: string) {
   const token = btoa(`${usuario}:${senha}`);
   const res = await fetch(`${API_URL}/api/lojas/${loja.slug}/tutores`, { headers: { Authorization: `Basic ${token}` } });
   if (res.status === 401 || res.status === 403) throw new Error("Usuário ou senha inválidos.");
+  if (res.status === 429) throw new Error("Muitas tentativas erradas. Espere alguns minutos e tente de novo.");
   if (!res.ok) throw new Error("Não foi possível conectar ao sistema.");
   sessionStorage.setItem(CHAVE_SESSAO, token);
 }

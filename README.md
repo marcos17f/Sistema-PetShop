@@ -123,6 +123,19 @@ despesas eventuais, atendimentos e **custo médio por atendimento** ((fixos + va
 - **LGPD:** o histórico e o Excel não guardam nome, telefone nem CPF de cliente; CPF continua opcional.
 - **Validação na API:** valores > 0 com no máximo 2 casas, datas entre 2000 e 2100, textos com tamanho máximo.
   Gravações simultâneas que colidem respondem 409 com mensagem clara (sem detalhes do banco).
+- **Tentativas de login:** depois de 10 senhas erradas do mesmo endereço em 15 minutos, ele fica bloqueado por 15 minutos
+  (resposta 429), mesmo acertando a senha. Configurável: `app.seguranca.max-tentativas` e `app.seguranca.bloqueio-minutos`.
+  Atrás de proxy (Cloudflare/Nginx), ligue `server.forward-headers-strategy=native` para valer o IP do cliente.
+- **Senha do painel em produção (bcrypt):** gere o hash e coloque em `PAINEL_SENHA` (nunca a senha em texto):
+  ```bash
+  docker run --rm httpd:2.4-alpine htpasswd -bnBC 12 "" 'SUA-SENHA-FORTE' | tr -d ':
+'
+  # PAINEL_SENHA={bcrypt}$2y$12$...   (o teste SenhaBcryptTest garante que esse formato funciona)
+  ```
+- **Backup diário:** `api/backup.sh` gera `backups/petshop-AAAA-MM-DD.sql.gz` (só o dono do servidor lê) e apaga os de mais
+  de 30 dias. No cron: `0 3 * * * cd /caminho/api && ./backup.sh >> backups/backup.log 2>&1`. Restaurar:
+  `gunzip -c backups/petshop-AAAA-MM-DD.sql.gz | docker compose exec -T postgres psql -U petshop -d petshop`
+  (testado: restaura clientes, agenda, histórico e a trava do histórico). Guarde uma cópia fora do servidor.
 - **Site:** cabeçalhos `X-Frame-Options: DENY`, `nosniff`, `Referrer-Policy` e `Permissions-Policy`; React escapa todo texto.
 - **Dependências:** versões fixadas. `npm audit --omit=dev` ainda aponta um `postcss` interno do Next.js usado só na hora do
   build (processa o nosso CSS, não dados de usuário); some quando o Next 15 publicar a correção.
@@ -139,9 +152,10 @@ despesas eventuais, atendimentos e **custo médio por atendimento** ((fixos + va
   `site/src/lib/loja.ts`; nome/WhatsApp da loja e preços dos serviços numa migration nova (`V7__...`), nunca editando a V3.
 - [ ] **Trocar o intervalo entre agendamentos** (hoje 40 min, provisório; combinar com o Cleiton, ex.: 30 min): variável
   `AGENDA_INTERVALO_MINUTOS` na API **e** `intervaloAgendaMinutos` em `site/src/lib/loja.ts` (os dois com o mesmo valor).
-  Os preços também podem ser mudados pela tela Financeiro → Preços dos serviços.
-- [ ] Limitar tentativas de login na API (hoje não há bloqueio após senhas erradas) antes de publicar.
+- [ ] Preços reais dos serviços (tela Financeiro → Preços dos serviços).
+- [ ] Gerar a senha forte do painel com bcrypt (comando na seção 6) e colocar em `PAINEL_SENHA` no servidor.
+- [ ] Agendar o `backup.sh` no cron do servidor e guardar cópia fora dele.
 - [ ] Fotos reais da loja no site (com autorização dos tutores que aparecerem).
-- [ ] Senha forte com bcrypt em produção.
 - [ ] Link das avaliações do Google (perfil da empresa) no site.
-- [ ] Backup diário do PostgreSQL.
+- [ ] Trocar o JDK da IDE para o 21 (*File → Project Structure → SDK*).
+- [ ] Deixar o repositório do GitHub **privado** (*Settings → General → Danger Zone → Change visibility*).

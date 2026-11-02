@@ -368,4 +368,21 @@ class PetshopApiTest {
         assertEquals(0, contar("aplicacao_vacina"));
         assertEquals(1, contar("agendamento"));
     }
+
+    @Test
+    void bloqueiaOEnderecoDepoisDeDezSenhasErradas() throws Exception {
+        java.util.function.Function<String, org.springframework.test.web.servlet.request.RequestPostProcessor> doIp =
+                ip -> r -> { r.setRemoteAddr(ip); return r; };
+        for (int i = 0; i < 10; i++) {
+            mvc.perform(get(BASE + "/tutores").with(doIp.apply("10.0.0.7")).with(httpBasic("loja", "chute" + i)))
+                    .andExpect(status().isUnauthorized());
+        }
+        // agora nem a senha certa entra desse endereço
+        mvc.perform(get(BASE + "/tutores").with(doIp.apply("10.0.0.7")).with(httpBasic("loja", "senha-teste")))
+                .andExpect(status().isTooManyRequests())
+                .andExpect(jsonPath("$.detail").value(containsString("Muitas tentativas")));
+        // outro endereço (a loja) continua entrando
+        mvc.perform(get(BASE + "/tutores").with(doIp.apply("10.0.0.8")).with(httpBasic("loja", "senha-teste")))
+                .andExpect(status().isOk());
+    }
 }

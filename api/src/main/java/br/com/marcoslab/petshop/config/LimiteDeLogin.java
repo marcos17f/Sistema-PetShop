@@ -1,0 +1,94 @@
+package br.com.marcoslab.petshop.config;
+
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.event.EventListener;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.security.authentication.event.AbstractAuthenticationFailureEvent;
+import org.springframework.security.authentication.event.AuthenticationSuccessEvent;
+import org.springframework.security.web.authentication.WebAuthenticationDetails;
+import org.springframework.stereotype.Component;
+import org.springframework.web.filter.OncePerRequestFilter;
+
+import java.io.IOException;
+import java.time.Clock;
+import java.time.Duration;
+import java.time.Instant;
+import java.util.ArrayDeque;
+import java.util.Deque;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+
+/**
+ * Contra tentativa de adivinhar a senha: depois de {@code max-tentativas} senhas erradas do mesmo endereço (IP)
+ * dentro de {@code bloqueio-minutos}, esse endereço fica bloqueado (429) por {@code bloqueio-minutos}, mesmo com a senha certa.
+ * Login certo zera a contagem. O log registra o bloqueio só com o IP (nunca usuário ou senha).
+ * shortcut: contagem em memória de uma instância (zera ao reiniciar); com várias instâncias da API, mover para o banco/Redis.
+ * Atrás de proxy (Cloudflare, Nginx), ligar server.forward-headers-strategy=native para o IP ser o do cliente.
+ */
+@Component
+public class LimiteDeLogin extends OncePerRequestFilter {
+
+    private static final Logger log = LoggerFactory.getLogger(LimiteDeLogin.class);
+
+    private final int maxTentativas;
+    private final Duration janela;
+    private final Clock clock;
+    private final Map<String, Deque<Instant>> falhas = new ConcurrentHashMap<>();
+    private final Map<String, Instant> bloqueadoAte = new ConcurrentHashMap<>();
+
+    public LimiteDeLogin(@Value("${app.seguranca.max-tentativas:10}") int maxTentativas,
+                         @Value("${app.seguranca.bloqueio-minutos:15}") int bloqueioMinutos, Clock clock) {
+        this.maxTentativas = maxTentativas;
+        this.janela = Duration.ofMinutes(bloqueioMinutos);
+        this.clock = clock;
+    }
+
+    @Override
+    protected void doFilterInternal(HttpServletRequest req, HttpServletResponse res, FilterChain chain)
+            throws ServletException, IOException {
+        Instant ate = bloqueadoAte.get(req.getRemoteAddr());
+        if (ate != null && clock.instant().isBefore(ate)) {
+            res.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
+            res.setHeader("Retry-After", String.valueOf(Duration.between(clock.instant(), ate).toSeconds()));
+            res.setContentType(MediaType.APPLICATION_PROBLEM_JSON_VALUE);
+            res.setCharacterEncoding("UTF-8");
+            res.getWriter().write("{\"status\":429,\"detail\":\"Muitas tentativas de login erradas. Tente de novo em alguns minutos.\"}");
+            return;
+        }
+        chain.doFilter(req, res);
+    }
+
+    @EventListener
+    public void falhou(AbstractAuthenticationFailureEvent e) {
+        String ip = ip(e.getAuthentication().getDetails());
+        if (ip == null) return;
+        Instant agora = clock.instant();
+        Deque<Instant> lista = falhas.computeIfAbsent(ip, k -> new ArrayDeque<>());
+        synchronized (lista) {
+            lista.addLast(agora);
+            while (!lista.isEmpty() && lista.peekFirst().isBefore(agora.minus(janela))) lista.removeFirst();
+            if (lista.size() >= maxTentativas) {
+                bloqueadoAte.put(ip, agora.plus(janela));
+                lista.clear();
+                log.warn("Login bloqueado por {} min após {} senhas erradas do IP {}", janela.toMinutes(), maxTentativas, ip);
+            }
+        }
+    }
+
+    @EventListener
+    public void entrou(AuthenticationSuccessEvent e) {
+        String ip = ip(e.getAuthentication().getDetails());
+        if (ip != null) falhas.remove(ip);
+    }
+
+    private static String ip(Object detalhes) {
+        return detalhes instanceof WebAuthenticationDetails w ? w.getRemoteAddress() : null;
+    }
+}
