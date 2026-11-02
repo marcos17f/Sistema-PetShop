@@ -18,6 +18,15 @@ spring:
 server:
   port: ${PORT:8080}
 
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health      # nada além da saúde fica exposto
+  endpoint:
+    health:
+      show-details: never    # responde só {"status":"UP"}, sem detalhes internos
+
 app:
   cors:
     origens: ${CORS_ORIGENS:http://localhost:3000}
@@ -28,6 +37,10 @@ app:
     loja-slug: ${PAINEL_LOJA:petshop-cleiton}
   lembrete:
     cron: "0 0 18 * * *"
+  limites:
+    # Avisos do sistema (tela Saúde do sistema): quando chegar perto destes limites, o painel avisa
+    whatsapp-mensagens-mes: ${LIMITE_WHATSAPP_MES:1000}   # franquia/plano de mensagens enviadas por mês
+    banco-mb: ${LIMITE_BANCO_MB:1000}                     # espaço do banco contratado na hospedagem
   whatsapp:
     # WhatsApp Cloud API OFICIAL (Meta). Sem token e phone-number-id, o sistema fica no modo SIMULADO:
     # nada sai, e a tela WhatsApp do painel mostra cada mensagem com botão para mandar por clique.

@@ -42,6 +42,7 @@ public class LimiteDeLogin extends OncePerRequestFilter {
     private final Clock clock;
     private final Map<String, Deque<Instant>> falhas = new ConcurrentHashMap<>();
     private final Map<String, Instant> bloqueadoAte = new ConcurrentHashMap<>();
+    private final Deque<Instant> bloqueios = new java.util.concurrent.ConcurrentLinkedDeque<>();
 
     public LimiteDeLogin(@Value("${app.seguranca.max-tentativas:10}") int maxTentativas,
                          @Value("${app.seguranca.bloqueio-minutos:15}") int bloqueioMinutos, Clock clock) {
@@ -76,6 +77,7 @@ public class LimiteDeLogin extends OncePerRequestFilter {
             while (!lista.isEmpty() && lista.peekFirst().isBefore(agora.minus(janela))) lista.removeFirst();
             if (lista.size() >= maxTentativas) {
                 bloqueadoAte.put(ip, agora.plus(janela));
+                bloqueios.addLast(agora);
                 lista.clear();
                 log.warn("Login bloqueado por {} min após {} senhas erradas do IP {}", janela.toMinutes(), maxTentativas, ip);
             }
@@ -86,6 +88,13 @@ public class LimiteDeLogin extends OncePerRequestFilter {
     public void entrou(AuthenticationSuccessEvent e) {
         String ip = ip(e.getAuthentication().getDetails());
         if (ip != null) falhas.remove(ip);
+    }
+
+    /** Quantos bloqueios por senha errada aconteceram nas últimas 24 h (para os avisos do sistema). */
+    public int bloqueiosUltimas24h() {
+        Instant limite = clock.instant().minus(Duration.ofHours(24));
+        while (!bloqueios.isEmpty() && bloqueios.peekFirst().isBefore(limite)) bloqueios.pollFirst();
+        return bloqueios.size();
     }
 
     private static String ip(Object detalhes) {

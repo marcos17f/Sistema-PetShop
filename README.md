@@ -55,6 +55,8 @@ Login do painel: usuário `loja`, senha `troque-esta-senha` (padrão de desenvol
 | `PAINEL_SENHA` | `{noop}troque-esta-senha` | Senha. **Em produção use `{bcrypt}<hash>`** |
 | `PAINEL_LOJA` | `petshop-cleiton` | Slug da loja que esse login acessa |
 | `CORS_ORIGENS` | `http://localhost:3000` | Endereço do site (separe vários por vírgula) |
+| `LIMITE_WHATSAPP_MES` | `1000` | Mensagens do plano/franquia por mês: avisa em 80% e 100% |
+| `LIMITE_BANCO_MB` | `1000` | Espaço do banco contratado: avisa em 80% e 95% |
 | `WHATSAPP_TOKEN` | vazio | Token da WhatsApp Cloud API (segredo: só aqui, nunca no banco/tela/Git). Vazio = modo simulado |
 | `WHATSAPP_PHONE_NUMBER_ID` | vazio | Id do número na Meta (WhatsApp → Configuração da API) |
 | `WHATSAPP_API_URL` | `https://graph.facebook.com/v23.0` | Versão da Graph API (atualizar quando a Meta descontinuar a versão) |
@@ -164,7 +166,23 @@ despesas eventuais, atendimentos e **custo médio por atendimento** ((fixos + va
 - **Dependências:** versões fixadas. `npm audit --omit=dev` ainda aponta um `postcss` interno do Next.js usado só na hora do
   build (processa o nosso CSS, não dados de usuário); some quando o Next 15 publicar a correção.
 
-## 7. Publicar (opção gratuita)
+## 7. Saúde do sistema (avisos)
+
+Tela **Painel → Saúde do sistema** e faixa no topo do painel: o sistema confere sozinho e avisa **antes** de algo parar,
+sempre dizendo o que fazer:
+
+| Área | Avisa quando |
+|---|---|
+| WhatsApp | mensagens do mês em 80%/100% do plano (`LIMITE_WHATSAPP_MES`) → hora de um plano maior; falhas de envio; token recusado pela Meta; lembretes automáticos ligados no modo simulado |
+| Banco de dados | espaço em 80%/95% de `LIMITE_BANCO_MB` (só PostgreSQL) |
+| Servidor | memória ainda ocupada depois da coleta de lixo ≥ 85% (sem alarme falso de pico); 5+ erros 5xx na última hora |
+| Segurança | senha do painel sem bcrypt; endereços bloqueados por senha errada nas últimas 24 h |
+
+**Monitor de queda (grátis):** cadastre `https://SEU-DOMINIO-DA-API/actuator/health` no [UptimeRobot](https://uptimerobot.com/)
+(ou similar) para receber e-mail/WhatsApp se o sistema cair. A rota responde só `{"status":"UP"}` (sem detalhes); o resto
+do actuator fica bloqueado.
+
+## 8. Publicar (opção gratuita)
 
 - Site: Cloudflare Pages (`npm run build`), com `NEXT_PUBLIC_API_URL` apontando para a API.
 - API + banco: Oracle Cloud Always Free (VM com Docker). Use o `Dockerfile` da pasta `api`.

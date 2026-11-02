@@ -20,6 +20,19 @@ public interface MensagemRepository extends JpaRepository<MensagemWhatsApp, Long
             """)
     boolean jaTem(@Param("lojaId") Long lojaId, @Param("chave") String chave);
 
+    @Query("""
+            select count(m) from MensagemWhatsApp m
+            where m.loja.id = :lojaId and m.status = :status and m.criadoEm >= :desde
+            """)
+    long contar(@Param("lojaId") Long lojaId, @Param("status") MensagemWhatsApp.Status status, @Param("desde") Instant desde);
+
+    @Query("""
+            select count(m) from MensagemWhatsApp m
+            where m.loja.id = :lojaId and m.status = br.com.marcoslab.petshop.whatsapp.MensagemWhatsApp.Status.FALHOU
+              and m.criadoEm >= :desde and m.erro like '%401%'
+            """)
+    long falhasDeAcesso(@Param("lojaId") Long lojaId, @Param("desde") Instant desde);
+
     @Modifying
     @Query("delete from MensagemWhatsApp m where m.criadoEm < :antes")
     int apagarAntesDe(@Param("antes") Instant antes);

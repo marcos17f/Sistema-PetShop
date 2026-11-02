@@ -4,7 +4,8 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Marca } from "@/components/Pata";
-import { buscarConfig, estaLogado, modoDemonstracao, sair } from "@/lib/api";
+import { buscarConfig, estaLogado, listarAvisos, modoDemonstracao, sair } from "@/lib/api";
+import type { Aviso } from "@/lib/tipos";
 
 const menu = [
   { href: "/painel", texto: "Agenda" },
@@ -13,6 +14,7 @@ const menu = [
   { href: "/painel/financeiro", texto: "Financeiro" },
   { href: "/painel/whatsapp", texto: "WhatsApp" },
   { href: "/painel/configuracoes", texto: "Configurações" },
+  { href: "/painel/saude", texto: "Saúde do sistema" },
 ];
 
 /** Moldura do painel: menu lateral + guarda de login (como um AuthGuard no Angular). */
@@ -21,6 +23,7 @@ export default function PainelLayout({ children }: { children: React.ReactNode }
   const router = useRouter();
   const [pronto, setPronto] = useState(false);
   const [nomeLoja, setNomeLoja] = useState<string | undefined>();
+  const [avisos, setAvisos] = useState<Aviso[]>([]);
 
   useEffect(() => {
     if (!estaLogado()) router.replace("/login");
@@ -30,7 +33,17 @@ export default function PainelLayout({ children }: { children: React.ReactNode }
     }
   }, [router]);
 
+  // avisos do sistema: ao trocar de tela e a cada 5 minutos
+  useEffect(() => {
+    if (!pronto) return;
+    const ler = () => listarAvisos().then(setAvisos).catch(() => undefined);
+    ler();
+    const t = setInterval(ler, 5 * 60_000);
+    return () => clearInterval(t);
+  }, [pronto, caminho]);
+
   if (!pronto) return null;
+  const importantes = avisos.filter((x) => x.nivel !== "INFO");
 
   return (
     <div className="flex min-h-screen flex-wrap">
@@ -67,7 +80,20 @@ export default function PainelLayout({ children }: { children: React.ReactNode }
           )}
         </div>
       </aside>
-      <main className="flex min-w-0 flex-[999_1_640px] flex-col gap-6 p-6 sm:p-8">{children}</main>
+      <main className="flex min-w-0 flex-[999_1_640px] flex-col gap-6 p-6 sm:p-8">
+        {importantes.length > 0 && caminho !== "/painel/saude" && (
+          <Link
+            href="/painel/saude"
+            role="alert"
+            className={`flex flex-wrap items-center gap-2 rounded-xl px-4 py-3 font-semibold no-underline ${importantes.some((x) => x.nivel === "CRITICO") ? "bg-[#fbdad3] text-[#9b2c12]" : "bg-[#fdecc8] text-[#7a4a00]"}`}
+          >
+            <span>⚠ {importantes[0].titulo}</span>
+            {importantes.length > 1 && <span className="font-medium">e mais {importantes.length - 1} aviso(s)</span>}
+            <span className="ml-auto underline">Ver o que fazer</span>
+          </Link>
+        )}
+        {children}
+      </main>
     </div>
   );
 }

@@ -196,3 +196,7 @@ export const NOMES_MENSAGEM: Record<TipoMensagem, string> = {
   AVALIACAO: "Avaliação",
   TESTE: "Teste",
 };
+
+/* ---------- avisos do sistema ---------- */
+
+export type Aviso = { nivel: "CRITICO" | "ATENCAO" | "INFO"; area: string; titulo: string; detalhe: string; acao: string };

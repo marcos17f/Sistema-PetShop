@@ -9,7 +9,7 @@ import {
 import { hoje, somarDias, somarMeses } from "./datas";
 import { podeRepetir } from "./tipos";
 import type {
-  AplicacaoVacina, Agendamento, Categoria, ConfigLoja, MensagemWhatsApp, ResultadoEnvio, SituacaoWhatsApp, TipoMensagem, Lancamento, Lembrete, Pet, PrecoServico, RegistroHistorico, Resumo, StatusAgendamento, TipoLancamento,
+  AplicacaoVacina, Agendamento, Aviso, Categoria, ConfigLoja, MensagemWhatsApp, ResultadoEnvio, SituacaoWhatsApp, TipoMensagem, Lancamento, Lembrete, Pet, PrecoServico, RegistroHistorico, Resumo, StatusAgendamento, TipoLancamento,
   TipoServico, Tutor,
 } from "./tipos";
 
@@ -488,4 +488,16 @@ export async function lembretesAgora(): Promise<ResultadoEnvio> {
     }
   }
   return r;
+}
+
+/* ---------- avisos do sistema ---------- */
+
+/** O que precisa de atenção (limite de plano, espaço, falhas, segurança) e o que fazer. */
+export async function listarAvisos(): Promise<Aviso[]> {
+  if (!modoDemonstracao) return chamar(`/avisos`);
+  return db.whatsapp.lembretesAutomaticos
+    ? [{ nivel: "ATENCAO", area: "WhatsApp", titulo: "Lembretes automáticos ligados, mas nada está saindo",
+        detalhe: "O WhatsApp está no modo simulado (sem a API oficial). Os lembretes ficam só registrados.",
+        acao: "Mande por clique na tela WhatsApp, ou configure a WhatsApp Cloud API no servidor (README, seção 4)." }]
+    : [];
 }
