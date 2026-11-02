@@ -1,0 +1,5 @@
+# Fim de linha padronizado (LF) para todo o projeto, igual em Windows, Linux e Docker
+* text=auto eol=lf
+*.png binary
+*.ico binary
+*.jpg binary

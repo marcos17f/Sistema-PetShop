@@ -1,0 +1,34 @@
+spring:
+  application:
+    name: petshop-api
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/petshop}
+    username: ${DB_USER:petshop}
+    password: ${DB_PASSWORD:petshop}
+  flyway:
+    # db/postgresql: só no PostgreSQL (ex.: trava que impede apagar o histórico de alterações)
+    locations: classpath:db/migration,classpath:db/{vendor}
+  jpa:
+    hibernate:
+      ddl-auto: none   # o schema é do Flyway
+    open-in-view: false
+  jackson:
+    time-zone: America/Sao_Paulo   # Goiânia (GO)
+
+server:
+  port: ${PORT:8080}
+
+app:
+  cors:
+    origens: ${CORS_ORIGENS:http://localhost:3000}
+  painel:
+    # Login do painel da loja. Em produção, use {bcrypt}<hash> no lugar de {noop}.
+    usuario: ${PAINEL_USUARIO:loja}
+    senha: ${PAINEL_SENHA:{noop}troque-esta-senha}
+    loja-slug: ${PAINEL_LOJA:petshop-cleiton}
+  lembrete:
+    cron: "0 0 18 * * *"
+  whatsapp:
+    # false = lembretes enviados por clique no painel (custo zero).
+    # true  = envio automático às 18h (precisa implementar o envio com a API oficial em NotificadorWhatsApp).
+    automatico: ${WHATSAPP_AUTOMATICO:false}

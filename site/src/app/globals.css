@@ -1,0 +1,102 @@
+@import "tailwindcss";
+
+@theme {
+  --color-verde: #0b6e5f;
+  --color-verde-escuro: #0e3b35;
+  --color-verde-linha: #2b5a52;
+  --color-menta: #e6f0ee;
+  --color-menta-2: #9fc2bb;
+  --color-fundo: #f3f6f5;
+  --color-ink: #16211f;
+  --color-muted: #4c5b58;
+  --color-linha: #e5ecea;
+  --color-borda: #d5dfdc;
+  --color-caramelo: #f2b66b;
+
+  --font-sans: "Plus Jakarta Sans", Inter, system-ui, sans-serif;
+}
+
+body {
+  background: var(--color-fundo);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  line-height: 1.5;
+}
+
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid var(--color-verde);
+  outline-offset: 2px;
+}
+
+@layer components {
+  .cartao {
+    background: #fff;
+    border-radius: 22px;
+    padding: 22px;
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 46px;
+    padding: 0 18px;
+    border-radius: 14px;
+    font-weight: 700;
+    border: 1px solid transparent;
+    cursor: pointer;
+    text-decoration: none;
+  }
+  .btn-verde {
+    background: var(--color-verde);
+    color: #fff;
+  }
+  .btn-verde:hover {
+    background: #08564a;
+  }
+  .btn-claro {
+    background: #fff;
+    color: var(--color-ink);
+    border-color: var(--color-borda);
+  }
+  .btn-claro:hover {
+    border-color: var(--color-verde);
+  }
+  .btn:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+
+  .campo {
+    font: inherit;
+    min-height: 46px;
+    padding: 0 12px;
+    border-radius: 12px;
+    border: 1px solid #c9d4d1;
+    background: #fff;
+    color: var(--color-ink);
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .rotulo {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--color-muted);
+  }
+
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    font-size: 13px;
+    font-weight: 700;
+    padding: 5px 11px;
+    border-radius: 999px;
+    white-space: nowrap;
+  }
+}

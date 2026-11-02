@@ -1,0 +1,39 @@
+package br.com.marcoslab.petshop.agenda;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.util.List;
+import java.util.Optional;
+
+public interface AgendamentoRepository extends JpaRepository<Agendamento, Long> {
+
+    @Query("""
+            select a from Agendamento a join fetch a.pet p join fetch p.tutor
+            where a.loja.id = :lojaId and a.data = :data
+            order by a.hora
+            """)
+    List<Agendamento> doDia(@Param("lojaId") Long lojaId, @Param("data") LocalDate data);
+
+    @Query("""
+            select count(a) > 0 from Agendamento a
+            where a.pet.id = :petId and a.data = :data and a.hora = :hora
+              and a.status <> br.com.marcoslab.petshop.agenda.StatusAgendamento.CANCELADO
+            """)
+    boolean petOcupado(@Param("petId") Long petId, @Param("data") LocalDate data, @Param("hora") LocalTime hora);
+
+    @Query("select a from Agendamento a join fetch a.pet p join fetch p.tutor where a.id = :id and a.loja.id = :lojaId")
+    Optional<Agendamento> buscarNaLoja(@Param("id") Long id, @Param("lojaId") Long lojaId);
+
+    /** Atendimentos concluídos no período (receita do financeiro). */
+    @Query("""
+            select a from Agendamento a join fetch a.pet p join fetch p.tutor
+            where a.loja.id = :lojaId and a.data between :inicio and :fim
+              and a.status = br.com.marcoslab.petshop.agenda.StatusAgendamento.CONCLUIDO
+            order by a.data, a.hora
+            """)
+    List<Agendamento> concluidosEntre(@Param("lojaId") Long lojaId, @Param("inicio") LocalDate inicio, @Param("fim") LocalDate fim);
+}

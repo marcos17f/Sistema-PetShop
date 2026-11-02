@@ -1,0 +1,11 @@
+# Sistemas operacionais e editores
+.DS_Store
+Thumbs.db
+desktop.ini
+.idea/
+.vscode/
+*.iml
+
+# Segredos (nunca versionar)
+.env
+.env.*

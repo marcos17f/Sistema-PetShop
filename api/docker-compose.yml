@@ -1,0 +1,15 @@
+# Sobe o PostgreSQL local para desenvolvimento:  docker compose up -d
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: petshop
+      POSTGRES_USER: petshop
+      POSTGRES_PASSWORD: petshop
+    ports:
+      - "5432:5432"
+    volumes:
+      - dados-postgres:/var/lib/postgresql/data
+
+volumes:
+  dados-postgres:
