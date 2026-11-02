@@ -62,6 +62,18 @@ public class Pet {
         }
     }
 
+    /** Corrige os dados do pet (inclusive o último banho, que define o próximo lembrete). */
+    public void alterar(String nome, String especie, String raca, Double pesoKg, String observacoes,
+                        Integer intervaloBanhoDias, LocalDate ultimoBanho) {
+        this.nome = nome.trim();
+        this.especie = especie;
+        this.raca = raca;
+        this.pesoKg = pesoKg;
+        this.observacoes = observacoes;
+        this.intervaloBanhoDias = intervaloBanhoDias;
+        this.ultimoBanho = ultimoBanho;
+    }
+
     public Long getId() { return id; }
     public Tutor getTutor() { return tutor; }
     public String getNome() { return nome; }

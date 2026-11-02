@@ -92,7 +92,38 @@ public class ClienteService {
         Tutor tutor = tutorDaLoja(loja, tutorId);
         Pet p = pets.save(new Pet(tutor, dados.nome(), dados.especie(), vazioParaNull(dados.raca()), dados.pesoKg(),
                 vazioParaNull(dados.observacoes()), dados.intervaloBanhoDias()));
+        if (dados.ultimoBanho() != null) {
+            p.registrarBanho(dados.ultimoBanho());
+        }
         return PetDto.de(p);
+    }
+
+    @Transactional
+    public PetDto alterarPet(Loja loja, Long tutorId, Long petId, NovoPet dados) {
+        Pet p = petDoTutor(loja, tutorId, petId);
+        p.alterar(dados.nome(), dados.especie(), vazioParaNull(dados.raca()), dados.pesoKg(), vazioParaNull(dados.observacoes()),
+                dados.intervaloBanhoDias(), dados.ultimoBanho());
+        return PetDto.de(p);
+    }
+
+    /** Pet cadastrado por engano: apaga com vacinas e agendamentos. Com atendimento concluído, não (está no financeiro). */
+    @Transactional
+    public void excluirPet(Loja loja, Long tutorId, Long petId) {
+        Pet p = petDoTutor(loja, tutorId, petId);
+        if (agenda.petTemConcluido(petId)) {
+            throw new Erros.Conflito("Esse pet tem atendimentos concluídos no financeiro e não pode ser excluído.");
+        }
+        agenda.apagarDoPet(petId);
+        vacinas.apagarDoPet(petId);
+        pets.deleteById(p.getId());
+    }
+
+    private Pet petDoTutor(Loja loja, Long tutorId, Long petId) {
+        Pet p = petDaLoja(loja, petId);
+        if (!p.getTutor().getId().equals(tutorId)) {
+            throw new Erros.NaoEncontrado("Pet não encontrado");
+        }
+        return p;
     }
 
     /** Usado pelos outros módulos (vacinas, agenda) para garantir que o pet é desta loja. */

@@ -33,4 +33,6 @@ public interface LancamentoRepository extends JpaRepository<Lancamento, Long> {
     @Modifying(flushAutomatically = true)
     @Query("update Lancamento c set c.copiadoDe = null where c.copiadoDe = :l")
     void soltarCopias(@Param("l") Lancamento l);
+
+    long countByCategoriaId(Long categoriaId);
 }

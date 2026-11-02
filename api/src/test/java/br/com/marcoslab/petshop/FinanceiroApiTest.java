@@ -329,4 +329,28 @@ class FinanceiroApiTest {
                 .andExpect(jsonPath("$.ultimosMeses[0].mes").value("2025-10"))
                 .andExpect(jsonPath("$.ultimosMeses[5].mes").value("2026-03"));
     }
+
+    @Test
+    void renomeiaCategoriaEExcluiSoSemLancamentos() throws Exception {
+        long internet = criar("/financeiro/categorias", "{\"nome\":\"Internt\",\"tipo\":\"FIXO\"}").get("id").asLong();
+        mvc.perform(logado(put(BASE + "/financeiro/categorias/" + internet)).content("{\"nome\":\"Internet\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.nome").value("Internet"))
+                .andExpect(jsonPath("$.tipo").value("FIXO"));
+        // nome que já existe no mesmo tipo
+        mvc.perform(logado(put(BASE + "/financeiro/categorias/" + internet)).content("{\"nome\":\"aluguel\"}"))
+                .andExpect(status().isConflict());
+
+        // em uso: não exclui; o lançamento mostra o nome novo
+        long id = lancar("2026-03-10", internet, "99.90", false);
+        mvc.perform(logado(get(BASE + "/financeiro/lancamentos").param("mes", "2026-03")))
+                .andExpect(jsonPath("$[0].categoriaNome").value("Internet"));
+        mvc.perform(logado(delete(BASE + "/financeiro/categorias/" + internet)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.detail").value(containsString("1 lançamento")));
+
+        mvc.perform(logado(delete(BASE + "/financeiro/lancamentos/" + id))).andExpect(status().isNoContent());
+        mvc.perform(logado(delete(BASE + "/financeiro/categorias/" + internet))).andExpect(status().isNoContent());
+        mvc.perform(logado(get(BASE + "/financeiro/categorias"))).andExpect(jsonPath("$", hasSize(18)));
+    }
 }

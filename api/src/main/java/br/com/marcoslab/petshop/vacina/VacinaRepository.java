@@ -25,4 +25,8 @@ public interface VacinaRepository extends JpaRepository<AplicacaoVacina, Long> {
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("delete from AplicacaoVacina v where v.pet.id in (select p.id from Pet p where p.tutor.id = :tutorId)")
     void apagarDoTutor(@Param("tutorId") Long tutorId);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("delete from AplicacaoVacina v where v.pet.id = :petId")
+    void apagarDoPet(@Param("petId") Long petId);
 }

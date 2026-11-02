@@ -60,7 +60,8 @@ async function chamar<T>(caminho: string, init: RequestInit = {}): Promise<T> {
   }
   if (!res.ok) {
     const corpo = await res.json().catch(() => null);
-    throw new Error(corpo?.detail ?? "Não foi possível concluir. Tente novamente.");
+    const campos = corpo?.campos ? Object.values(corpo.campos as Record<string, string>) : [];
+    throw new Error(campos.length ? campos.join(" · ") : (corpo?.detail ?? "Não foi possível concluir. Tente novamente."));
   }
   return res.status === 204 ? (undefined as T) : res.json();
 }
@@ -70,7 +71,7 @@ const espera = () => new Promise((r) => setTimeout(r, 150));
 /* ---------- clientes e pets ---------- */
 
 export type NovoTutor = Omit<Tutor, "id" | "pets">;
-export type NovoPet = Omit<Pet, "id" | "tutorId" | "ultimoBanho">;
+export type NovoPet = Omit<Pet, "id" | "tutorId">;
 
 export async function listarTutores(busca = ""): Promise<Tutor[]> {
   if (!modoDemonstracao) return chamar(`/tutores?busca=${encodeURIComponent(busca)}`);
@@ -130,9 +131,38 @@ export async function criarTutor(dados: NovoTutor): Promise<Tutor> {
 
 export async function criarPet(tutorId: number, dados: NovoPet): Promise<Pet> {
   if (!modoDemonstracao) return chamar(`/tutores/${tutorId}/pets`, { method: "POST", body: JSON.stringify(dados) });
-  const p: Pet = { ...dados, id: novoId(), tutorId, ultimoBanho: null };
+  validarPet(dados);
+  const p: Pet = { ...dados, id: novoId(), tutorId };
   db.pets.push(p);
   return p;
+}
+
+export async function alterarPet(tutorId: number, petId: number, dados: NovoPet): Promise<Pet> {
+  if (!modoDemonstracao) return chamar(`/tutores/${tutorId}/pets/${petId}`, { method: "PUT", body: JSON.stringify(dados) });
+  validarPet(dados);
+  const p = db.pets.find((x) => x.id === petId && x.tutorId === tutorId);
+  if (!p) throw new Error("Pet não encontrado");
+  Object.assign(p, { ...dados, nome: dados.nome.trim() });
+  return p;
+}
+
+/** Pet cadastrado por engano: apaga com vacinas e agendamentos. Com atendimento concluído, não (está no financeiro). */
+export async function excluirPet(tutorId: number, petId: number): Promise<void> {
+  if (!modoDemonstracao) return chamar(`/tutores/${tutorId}/pets/${petId}`, { method: "DELETE" });
+  if (db.agendamentos.some((a) => a.petId === petId && a.status === "CONCLUIDO")) {
+    throw new Error("Esse pet tem atendimentos concluídos no financeiro e não pode ser excluído.");
+  }
+  db.agendamentos = db.agendamentos.filter((a) => a.petId !== petId);
+  db.vacinas = db.vacinas.filter((v) => v.petId !== petId);
+  db.pets = db.pets.filter((x) => x.id !== petId);
+}
+
+/** Mesmas regras da API (demonstração). */
+function validarPet(d: NovoPet) {
+  if (d.intervaloBanhoDias !== null && (d.intervaloBanhoDias < 1 || d.intervaloBanhoDias > 365)) {
+    throw new Error("O banho deve ser a cada 1 a 365 dias");
+  }
+  if (d.ultimoBanho && d.ultimoBanho > hoje()) throw new Error("O último banho não pode ser no futuro");
 }
 
 /* ---------- vacinas ---------- */
@@ -277,6 +307,29 @@ export async function criarCategoria(nome: string, tipo: TipoLancamento): Promis
   db.categorias.push(c);
   registrar("CRIOU", "categoria", c.id, null, `${tipo} · ${limpo}`);
   return c;
+}
+
+export async function renomearCategoria(id: number, nome: string): Promise<Categoria> {
+  if (!modoDemonstracao) return chamar(`/financeiro/categorias/${id}`, { method: "PUT", body: JSON.stringify({ nome }) });
+  const c = db.categorias.find((x) => x.id === id)!;
+  const limpo = nome.trim();
+  if (db.categorias.some((x) => x.id !== id && x.tipo === c.tipo && x.nome.toLowerCase() === limpo.toLowerCase())) {
+    throw new Error("Já existe uma categoria com esse nome.");
+  }
+  registrar("ALTEROU", "categoria", id, `${c.tipo} · ${c.nome}`, `${c.tipo} · ${limpo}`);
+  c.nome = limpo;
+  db.lancamentos.filter((l) => l.categoriaId === id).forEach((l) => (l.categoriaNome = limpo));
+  return { ...c };
+}
+
+/** Só apaga categoria sem lançamentos (mesma regra da API). */
+export async function excluirCategoria(id: number): Promise<void> {
+  if (!modoDemonstracao) return chamar(`/financeiro/categorias/${id}`, { method: "DELETE" });
+  const emUso = db.lancamentos.filter((l) => l.categoriaId === id).length;
+  if (emUso > 0) throw new Error(`Essa categoria tem ${emUso} lançamento(s). Mude-os para outra categoria antes de excluir.`);
+  const c = db.categorias.find((x) => x.id === id)!;
+  registrar("EXCLUIU", "categoria", id, `${c.tipo} · ${c.nome}`, null);
+  db.categorias.splice(db.categorias.indexOf(c), 1);
 }
 
 /** Lançamentos do mês (yyyy-MM). Abrir um mês lança sozinho as despesas que repetem todo mês. */

@@ -1,11 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Carregando, Erro, Titulo } from "@/components/Ui";
+import { BotaoExcluir, Carregando, Erro, Titulo } from "@/components/Ui";
 import { Graficos } from "@/components/Graficos";
 import {
   alterarLancamento, buscarResumo, criarCategoria, criarLancamento, definirPreco, excluirLancamento, listarAtendimentos,
-  listarCategorias, listarHistorico, listarLancamentos, listarPrecos, type DadosLancamento,
+  excluirCategoria, listarCategorias, listarHistorico, renomearCategoria, listarLancamentos, listarPrecos, type DadosLancamento,
 } from "@/lib/api";
 import { formatar, hoje, mesAtual, nomeMes, somarMeses } from "@/lib/datas";
 import {
@@ -14,13 +14,14 @@ import {
   type TipoLancamento,
 } from "@/lib/tipos";
 
-type Aba = TipoLancamento | "PRECOS";
+type Aba = TipoLancamento | "PRECOS" | "CATEGORIAS";
 const ABAS: { id: Aba; nome: string }[] = [
   { id: "FIXO", nome: "Custos fixos" },
   { id: "VARIAVEL", nome: "Custos variáveis" },
   { id: "EVENTUAL", nome: "Despesas eventuais" },
   { id: "RECEITA", nome: "Receitas" },
   { id: "PRECOS", nome: "Preços dos serviços" },
+  { id: "CATEGORIAS", nome: "Categorias" },
 ];
 
 export default function Financeiro() {
@@ -128,6 +129,14 @@ export default function Financeiro() {
 
         {aba === "PRECOS" ? (
           <Precos />
+        ) : aba === "CATEGORIAS" ? (
+          <Categorias
+            categorias={categorias}
+            aoMudar={async () => {
+              setCategorias(await listarCategorias());
+              carregar(); // nome novo aparece nos lançamentos
+            }}
+          />
         ) : (
           <Lancamentos
             key={`${aba}-${mes}`}
@@ -528,5 +537,70 @@ function Historico({ versao }: { versao: number }) {
         </ul>
       )}
     </details>
+  );
+}
+
+/* ---------- categorias: renomear e excluir (só sem lançamentos) ---------- */
+
+function Categorias({ categorias, aoMudar }: { categorias: Categoria[]; aoMudar: () => Promise<void> }) {
+  const [editandoId, setEditandoId] = useState<number | null>(null);
+  const [nome, setNome] = useState("");
+  const [erro, setErro] = useState<string | null>(null);
+
+  async function salvar(e: React.FormEvent, id: number) {
+    e.preventDefault();
+    if (!nome.trim()) return setErro("Informe o nome.");
+    try {
+      await renomearCategoria(id, nome);
+      setEditandoId(null);
+      setErro(null);
+      await aoMudar();
+    } catch (er) {
+      setErro((er as Error).message);
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-4">
+      <p className="m-0 text-muted">Renomeie categorias (o nome muda em todos os lançamentos) ou exclua as que não têm lançamentos.</p>
+      <Erro texto={erro} />
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(260px,1fr))] gap-4">
+        {(Object.keys(NOMES_LANCAMENTO) as TipoLancamento[]).map((tipo) => (
+          <section key={tipo} aria-label={NOMES_LANCAMENTO[tipo]} className="flex flex-col gap-1 rounded-2xl bg-fundo p-4">
+            <h3 className="m-0 mb-1 text-base font-extrabold">{NOMES_LANCAMENTO[tipo]}</h3>
+            {categorias.filter((c) => c.tipo === tipo).map((c) =>
+              editandoId === c.id ? (
+                <form key={c.id} onSubmit={(e) => salvar(e, c.id)} className="flex flex-wrap items-center gap-2 py-1">
+                  <input className="campo min-h-10 flex-1" maxLength={60} value={nome} onChange={(e) => setNome(e.target.value)} aria-label={`Novo nome de ${c.nome}`} />
+                  <button type="submit" className="btn btn-verde min-h-10">Salvar</button>
+                  <button type="button" className="btn btn-claro min-h-10" onClick={() => setEditandoId(null)}>Cancelar</button>
+                </form>
+              ) : (
+                <div key={c.id} className="flex flex-wrap items-center justify-between gap-2 border-b border-linha py-1.5 last:border-0">
+                  <span className="font-semibold">{c.nome}</span>
+                  <span className="flex flex-wrap gap-2">
+                    <button type="button" className="btn btn-claro min-h-9 px-3" onClick={() => { setEditandoId(c.id); setNome(c.nome); setErro(null); }}>
+                      Renomear
+                    </button>
+                    <BotaoExcluir
+                      pergunta={`Excluir "${c.nome}"?`}
+                      aoConfirmar={async () => {
+                        try {
+                          await excluirCategoria(c.id);
+                          setErro(null);
+                          await aoMudar();
+                        } catch (er) {
+                          setErro((er as Error).message);
+                        }
+                      }}
+                    />
+                  </span>
+                </div>
+              ),
+            )}
+          </section>
+        ))}
+      </div>
+    </div>
   );
 }

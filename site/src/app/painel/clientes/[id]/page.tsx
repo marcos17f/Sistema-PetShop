@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { Fragment, useCallback, useEffect, useState } from "react";
 import { FormCliente } from "@/components/FormCliente";
 import { BotaoExcluir, Carregando, Erro } from "@/components/Ui";
-import { alterarTutor, alterarVacina, buscarTutor, criarPet, excluirTutor, excluirVacina, listarVacinas, registrarVacina, type NovaVacina, type NovoPet } from "@/lib/api";
+import { alterarPet, alterarTutor, alterarVacina, buscarTutor, criarPet, excluirPet, excluirTutor, excluirVacina, listarVacinas, registrarVacina, type NovaVacina, type NovoPet } from "@/lib/api";
 import { formatar, hoje, proximoBanho, situacaoVacina } from "@/lib/datas";
 import { linkWhatsapp } from "@/lib/loja";
 import type { AplicacaoVacina, Pet, Tutor } from "@/lib/tipos";
@@ -124,12 +124,25 @@ export default function FichaCliente() {
         />
       )}
 
-      {pet ? <PainelPet pet={pet} /> : <p className="m-0 text-muted">Cadastre o primeiro pet deste cliente.</p>}
+      {pet ? (
+        <PainelPet
+          key={pet.id}
+          pet={pet}
+          aoMudar={async (removido) => {
+            if (removido) setPetId(null);
+            await carregar();
+          }}
+        />
+      ) : (
+        <p className="m-0 text-muted">Cadastre o primeiro pet deste cliente.</p>
+      )}
     </>
   );
 }
 
-function PainelPet({ pet }: { pet: Pet }) {
+function PainelPet({ pet, aoMudar }: { pet: Pet; aoMudar: (removido: boolean) => Promise<void> }) {
+  const [editandoPet, setEditandoPet] = useState(false);
+  const [erroPet, setErroPet] = useState<string | null>(null);
   const [vacinas, setVacinas] = useState<AplicacaoVacina[] | null>(null);
   const [nova, setNova] = useState(false);
   const [editandoId, setEditandoId] = useState<number | null>(null);
@@ -248,25 +261,66 @@ function PainelPet({ pet }: { pet: Pet }) {
           <p className="m-0 text-[13px] text-menta-2">O cliente recebe o convite no WhatsApp na véspera.</p>
         </section>
         <section aria-label="Sobre o pet" className="cartao flex flex-col gap-2.5 p-6">
-          <h2 className="m-0 text-lg font-extrabold">Sobre o {pet.nome}</h2>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 className="m-0 text-lg font-extrabold">Sobre o {pet.nome}</h2>
+            <span className="flex flex-wrap gap-2">
+              <button type="button" className="btn btn-claro min-h-10" aria-expanded={editandoPet} onClick={() => setEditandoPet((v) => !v)}>Editar</button>
+              <BotaoExcluir
+                pergunta={`Excluir ${pet.nome}? Só para cadastro feito por engano (apaga vacinas e agendamentos dele).`}
+                aoConfirmar={async () => {
+                  try {
+                    await excluirPet(pet.tutorId, pet.id);
+                    await aoMudar(true);
+                  } catch (e) {
+                    setErroPet((e as Error).message);
+                  }
+                }}
+              />
+            </span>
+          </div>
+          <Erro texto={erroPet} />
           <div className="flex justify-between gap-2.5"><span className="text-muted">Espécie e raça</span><span className="text-right font-bold">{pet.especie} · {pet.raca || "—"}</span></div>
           <div className="flex justify-between gap-2.5"><span className="text-muted">Peso</span><span className="font-bold">{pet.pesoKg ? `${pet.pesoKg} kg` : "—"}</span></div>
           {pet.observacoes && <p className="m-0 mt-1.5 rounded-xl bg-[#fdf3e1] p-3 text-sm text-[#6b4a12]">{pet.observacoes}</p>}
         </section>
       </aside>
+      {editandoPet && (
+        <div className="basis-full">
+          <NovoPetForm
+            tutorId={pet.tutorId}
+            editando={pet}
+            aoSalvar={async () => {
+              setEditandoPet(false);
+              await aoMudar(false);
+            }}
+            aoCancelar={() => setEditandoPet(false)}
+          />
+        </div>
+      )}
     </div>
   );
 }
 
-function NovoPetForm({ tutorId, aoSalvar }: { tutorId: number; aoSalvar: (p: Pet) => void }) {
-  const [f, setF] = useState<NovoPet>({ nome: "", especie: "Cão", raca: "", pesoKg: null, observacoes: "", intervaloBanhoDias: 15 });
+/** Cadastrar pet, ou corrigir um existente quando recebe "editando". */
+function NovoPetForm({ tutorId, editando, aoSalvar, aoCancelar }: {
+  tutorId: number;
+  editando?: Pet;
+  aoSalvar: (p: Pet) => void;
+  aoCancelar?: () => void;
+}) {
+  const [f, setF] = useState<NovoPet>(
+    editando
+      ? { nome: editando.nome, especie: editando.especie, raca: editando.raca, pesoKg: editando.pesoKg, observacoes: editando.observacoes,
+          intervaloBanhoDias: editando.intervaloBanhoDias, ultimoBanho: editando.ultimoBanho }
+      : { nome: "", especie: "Cão", raca: "", pesoKg: null, observacoes: "", intervaloBanhoDias: 15, ultimoBanho: null },
+  );
   const [erro, setErro] = useState<string | null>(null);
 
   async function salvar(e: React.FormEvent) {
     e.preventDefault();
     if (!f.nome.trim()) return setErro("Informe o nome do pet.");
     try {
-      aoSalvar(await criarPet(tutorId, f));
+      aoSalvar(editando ? await alterarPet(tutorId, editando.id, f) : await criarPet(tutorId, f));
     } catch (er) {
       setErro((er as Error).message);
     }
@@ -285,10 +339,15 @@ function NovoPetForm({ tutorId, aoSalvar }: { tutorId: number; aoSalvar: (p: Pet
       <label className="flex flex-col gap-1.5"><span className="rotulo">Peso (kg)</span>
         <input className="campo" type="number" min="0" step="0.1" value={f.pesoKg ?? ""} onChange={(e) => setF({ ...f, pesoKg: e.target.value ? Number(e.target.value) : null })} /></label>
       <label className="flex flex-col gap-1.5"><span className="rotulo">Banho a cada (dias)</span>
-        <input className="campo" type="number" min="0" value={f.intervaloBanhoDias ?? ""} onChange={(e) => setF({ ...f, intervaloBanhoDias: e.target.value ? Number(e.target.value) : null })} /></label>
+        <input className="campo" type="number" min="1" max="365" value={f.intervaloBanhoDias ?? ""} onFocus={(e) => e.target.select()} onChange={(e) => setF({ ...f, intervaloBanhoDias: e.target.value ? Number(e.target.value) : null })} /></label>
+      <label className="flex flex-col gap-1.5"><span className="rotulo">Último banho (opcional)</span>
+        <input className="campo" type="date" max={hoje()} value={f.ultimoBanho ?? ""} onChange={(e) => setF({ ...f, ultimoBanho: e.target.value || null })} /></label>
       <label className="col-span-full flex flex-col gap-1.5"><span className="rotulo">Observações de manejo</span>
         <input className="campo" value={f.observacoes} onChange={(e) => setF({ ...f, observacoes: e.target.value })} /></label>
-      <button type="submit" className="btn btn-verde">Salvar pet</button>
+      <div className="flex gap-2">
+        <button type="submit" className="btn btn-verde flex-1">{editando ? "Salvar alterações" : "Salvar pet"}</button>
+        {aoCancelar && <button type="button" className="btn btn-claro" onClick={aoCancelar}>Cancelar</button>}
+      </div>
       <div className="col-span-full"><Erro texto={erro} /></div>
     </form>
   );

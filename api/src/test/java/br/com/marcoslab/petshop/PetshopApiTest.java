@@ -318,4 +318,54 @@ class PetshopApiTest {
         mvc.perform(logado(delete(BASE + "/pets/" + thor + "/vacinas/" + v))).andExpect(status().isNoContent());
         mvc.perform(logado(get(BASE + "/pets/" + thor + "/vacinas"))).andExpect(jsonPath("$", hasSize(0)));
     }
+
+    @Test
+    void editaPetComUltimoBanhoEExcluiPetCadastradoPorEngano() throws Exception {
+        long thor = novoTutorComPet();
+        long tutor = tutorDoPet(thor);
+        String pet = "/tutores/" + tutor + "/pets/";
+
+        mvc.perform(logado(put(BASE + pet + thor)).content("""
+                        {"nome":"Thor","especie":"Cão","raca":"Lhasa","pesoKg":7.2,"observacoes":"Medroso",
+                         "intervaloBanhoDias":20,"ultimoBanho":"2026-03-01"}
+                        """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.raca").value("Lhasa"))
+                .andExpect(jsonPath("$.intervaloBanhoDias").value(20))
+                .andExpect(jsonPath("$.ultimoBanho").value("2026-03-01"));
+        // o último banho corrigido já gera o lembrete do próximo
+        mvc.perform(logado(get(BASE + "/lembretes").param("data", "2026-03-21")))
+                .andExpect(jsonPath("$[0].tipo").value("BANHO"));
+        // mensagem de campo clara (antes: "Intervalo inválido" com 1515)
+        mvc.perform(logado(put(BASE + pet + thor)).content("""
+                        {"nome":"Thor","especie":"Cão","intervaloBanhoDias":1515}
+                        """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.campos.intervaloBanhoDias").value("O banho deve ser a cada 1 a 365 dias"));
+
+        // pet de outro cliente pela URL errada: 404
+        mvc.perform(logado(delete(BASE + "/tutores/999/pets/" + thor))).andExpect(status().isNotFound());
+
+        // com atendimento concluído não exclui
+        long ag = criar("/agenda", """
+                {"petId":%d,"data":"2026-03-02","hora":"09:00","tipo":"BANHO"}
+                """.formatted(thor)).get("id").asLong();
+        mvc.perform(logado(patch(BASE + "/agenda/" + ag + "/status")).content("{\"status\":\"CONCLUIDO\"}"));
+        mvc.perform(logado(delete(BASE + pet + thor))).andExpect(status().isConflict());
+
+        // pet cadastrado por engano: apaga com vacinas e agendamentos
+        long engano = criar("/tutores/" + tutor + "/pets", """
+                {"nome":"Rex","especie":"Cão","ultimoBanho":"2026-02-01"}
+                """).get("id").asLong();
+        criar("/pets/" + engano + "/vacinas", """
+                {"vacina":"V10","aplicadaEm":"2026-01-10"}
+                """);
+        criar("/agenda", """
+                {"petId":%d,"data":"2026-03-02","hora":"11:00","tipo":"TOSA"}
+                """.formatted(engano));
+        mvc.perform(logado(delete(BASE + pet + engano))).andExpect(status().isNoContent());
+        assertEquals(1, contar("pet"));
+        assertEquals(0, contar("aplicacao_vacina"));
+        assertEquals(1, contar("agendamento"));
+    }
 }

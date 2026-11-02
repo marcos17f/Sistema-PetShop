@@ -68,7 +68,8 @@ Base: `/api/lojas/{slug}`
 | GET | `/tutores/{id}` | Ficha do cliente com os pets |
 | POST | `/tutores` | Novo cliente |
 | PUT / DELETE | `/tutores/{id}` | Edita o cliente / exclui: cadastro por engano é apagado; com atendimento concluído, apaga os dados pessoais (LGPD) e mantém os valores no financeiro |
-| POST | `/tutores/{id}/pets` | Novo pet |
+| POST | `/tutores/{id}/pets` | Novo pet (pode informar o último banho) |
+| PUT / DELETE | `/tutores/{id}/pets/{petId}` | Edita o pet (inclusive o último banho) / exclui pet cadastrado por engano (com atendimento concluído, não) |
 | GET/POST | `/pets/{petId}/vacinas` | Carteira de vacinação |
 | PUT / DELETE | `/pets/{petId}/vacinas/{id}` | Corrige / apaga vacina registrada errado |
 | GET | `/agenda?data=yyyy-MM-dd` | Agenda do dia |
@@ -78,6 +79,7 @@ Base: `/api/lojas/{slug}`
 | GET | `/lembretes?data=` | Lembretes do dia (agendamentos, reforço de vacina, retorno de banho) |
 | POST | `/lembretes/enviados` | Marca lembrete como enviado |
 | GET/POST | `/financeiro/categorias` | Categorias de custo/receita (as padrão vêm na migration) |
+| PUT / DELETE | `/financeiro/categorias/{id}` | Renomeia / exclui categoria (só sem lançamentos) |
 | GET | `/financeiro/lancamentos?mes=yyyy-MM` | Lançamentos do mês. Abrir o mês lança sozinho os custos fixos recorrentes |
 | POST / PUT / DELETE | `/financeiro/lancamentos[/{id}]` | Cria, edita e exclui lançamento (o tipo vem da categoria) |
 | GET | `/financeiro/atendimentos?mes=` | Atendimentos concluídos do mês (receita de serviço) |

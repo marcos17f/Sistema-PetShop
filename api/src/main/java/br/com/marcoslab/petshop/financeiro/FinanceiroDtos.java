@@ -18,6 +18,9 @@ public final class FinanceiroDtos {
             @NotNull(message = "Escolha o tipo") TipoLancamento tipo) {
     }
 
+    public record NomeCategoria(@NotBlank(message = "Informe o nome") @Size(max = 60) String nome) {
+    }
+
     public record CategoriaDto(Long id, String nome, TipoLancamento tipo) {
         static CategoriaDto de(Categoria c) {
             return new CategoriaDto(c.getId(), c.getNome(), c.getTipo());

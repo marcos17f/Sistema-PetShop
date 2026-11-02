@@ -17,7 +17,8 @@ public interface CategoriaRepository extends JpaRepository<Categoria, Long> {
 
     @Query("""
             select count(c) > 0 from Categoria c
-            where c.loja.id = :lojaId and c.tipo = :tipo and lower(c.nome) = lower(:nome)
+            where c.loja.id = :lojaId and c.tipo = :tipo and lower(c.nome) = lower(:nome) and c.id <> :ignorar
             """)
-    boolean existe(@Param("lojaId") Long lojaId, @Param("tipo") TipoLancamento tipo, @Param("nome") String nome);
+    boolean existe(@Param("lojaId") Long lojaId, @Param("tipo") TipoLancamento tipo, @Param("nome") String nome,
+                   @Param("ignorar") Long ignorar);
 }

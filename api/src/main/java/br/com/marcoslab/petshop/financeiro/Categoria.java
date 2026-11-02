@@ -31,6 +31,10 @@ public class Categoria {
         this.tipo = tipo;
     }
 
+    public void renomear(String nome) {
+        this.nome = nome;
+    }
+
     public Long getId() { return id; }
     public String getNome() { return nome; }
     public TipoLancamento getTipo() { return tipo; }

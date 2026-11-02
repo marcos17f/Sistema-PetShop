@@ -53,4 +53,16 @@ public class ClienteController {
     public PetDto criarPet(@PathVariable String slug, @PathVariable Long id, @Valid @RequestBody NovoPet dados) {
         return clientes.criarPet(lojas.buscar(slug), id, dados);
     }
+
+    @PutMapping("/{id}/pets/{petId}")
+    public PetDto alterarPet(@PathVariable String slug, @PathVariable Long id, @PathVariable Long petId,
+                             @Valid @RequestBody NovoPet dados) {
+        return clientes.alterarPet(lojas.buscar(slug), id, petId, dados);
+    }
+
+    @DeleteMapping("/{id}/pets/{petId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void excluirPet(@PathVariable String slug, @PathVariable Long id, @PathVariable Long petId) {
+        clientes.excluirPet(lojas.buscar(slug), id, petId);
+    }
 }

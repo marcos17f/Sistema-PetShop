@@ -55,12 +55,37 @@ public class FinanceiroService {
     @Transactional
     public CategoriaDto criarCategoria(Loja loja, NovaCategoria dados) {
         String nome = dados.nome().trim();
-        if (categorias.existe(loja.getId(), dados.tipo(), nome)) {
+        if (categorias.existe(loja.getId(), dados.tipo(), nome, -1L)) {
             throw new Erros.Conflito("Já existe uma categoria com esse nome.");
         }
         Categoria c = categorias.save(new Categoria(loja, nome, dados.tipo()));
         auditoria.registrar(loja, Acao.CRIOU, "categoria", c.getId(), null, c.getTipo() + " · " + c.getNome());
         return CategoriaDto.de(c);
+    }
+
+    @Transactional
+    public CategoriaDto renomearCategoria(Loja loja, Long id, String novoNome) {
+        Categoria c = categoriaDaLoja(loja, id);
+        String nome = novoNome.trim();
+        if (categorias.existe(loja.getId(), c.getTipo(), nome, id)) {
+            throw new Erros.Conflito("Já existe uma categoria com esse nome.");
+        }
+        String antes = c.getNome();
+        c.renomear(nome);
+        auditoria.registrar(loja, Acao.ALTEROU, "categoria", id, c.getTipo() + " · " + antes, c.getTipo() + " · " + nome);
+        return CategoriaDto.de(c);
+    }
+
+    /** Só apaga categoria sem lançamentos, para nenhum lançamento ficar sem categoria. */
+    @Transactional
+    public void excluirCategoria(Loja loja, Long id) {
+        Categoria c = categoriaDaLoja(loja, id);
+        long emUso = lancamentos.countByCategoriaId(id);
+        if (emUso > 0) {
+            throw new Erros.Conflito("Essa categoria tem %d lançamento(s). Mude-os para outra categoria antes de excluir.".formatted(emUso));
+        }
+        auditoria.registrar(loja, Acao.EXCLUIU, "categoria", id, c.getTipo() + " · " + c.getNome(), null);
+        categorias.delete(c);
     }
 
     /* ---------- lançamentos ---------- */

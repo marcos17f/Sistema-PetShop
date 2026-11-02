@@ -37,6 +37,17 @@ public class FinanceiroController {
         return financeiro.criarCategoria(lojas.buscar(slug), dados);
     }
 
+    @PutMapping("/financeiro/categorias/{id}")
+    public CategoriaDto renomearCategoria(@PathVariable String slug, @PathVariable Long id, @Valid @RequestBody NomeCategoria dados) {
+        return financeiro.renomearCategoria(lojas.buscar(slug), id, dados.nome());
+    }
+
+    @DeleteMapping("/financeiro/categorias/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void excluirCategoria(@PathVariable String slug, @PathVariable Long id) {
+        financeiro.excluirCategoria(lojas.buscar(slug), id);
+    }
+
     @GetMapping("/financeiro/lancamentos")
     public List<LancamentoDto> lancamentos(@PathVariable String slug, @RequestParam YearMonth mes,
                                            @RequestParam(required = false) TipoLancamento tipo) {

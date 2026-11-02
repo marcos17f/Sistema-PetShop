@@ -25,7 +25,10 @@ public final class ClienteDtos {
             @Size(max = 80) String raca,
             @Positive(message = "Peso inválido") Double pesoKg,
             @Size(max = 500) String observacoes,
-            @Min(value = 1, message = "Intervalo inválido") @Max(365) Integer intervaloBanhoDias) {
+            @Min(value = 1, message = "O banho deve ser a cada 1 a 365 dias")
+            @Max(value = 365, message = "O banho deve ser a cada 1 a 365 dias") Integer intervaloBanhoDias,
+            /** Opcional: para cadastrar um cliente antigo já com o último banho certo, ou corrigir. */
+            @PastOrPresent(message = "O último banho não pode ser no futuro") LocalDate ultimoBanho) {
     }
 
     public record PetDto(Long id, Long tutorId, String nome, String especie, String raca, Double pesoKg,

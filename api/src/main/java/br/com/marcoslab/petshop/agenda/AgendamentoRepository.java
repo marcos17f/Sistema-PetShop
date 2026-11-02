@@ -56,4 +56,14 @@ public interface AgendamentoRepository extends JpaRepository<Agendamento, Long> 
               and a.status <> br.com.marcoslab.petshop.agenda.StatusAgendamento.CONCLUIDO
             """)
     void cancelarFuturosDoTutor(@Param("tutorId") Long tutorId, @Param("hoje") LocalDate hoje);
+
+    @Query("""
+            select count(a) > 0 from Agendamento a
+            where a.pet.id = :petId and a.status = br.com.marcoslab.petshop.agenda.StatusAgendamento.CONCLUIDO
+            """)
+    boolean petTemConcluido(@Param("petId") Long petId);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("delete from Agendamento a where a.pet.id = :petId")
+    void apagarDoPet(@Param("petId") Long petId);
 }
