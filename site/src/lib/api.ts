@@ -9,7 +9,7 @@ import {
 import { hoje, somarDias, somarMeses } from "./datas";
 import { podeRepetir } from "./tipos";
 import type {
-  AplicacaoVacina, Agendamento, Aviso, Categoria, ConfigLoja, MensagemWhatsApp, ResultadoEnvio, SituacaoWhatsApp, TipoMensagem, Lancamento, Lembrete, Pet, PrecoServico, RegistroHistorico, Resumo, StatusAgendamento, TipoLancamento,
+  AplicacaoVacina, Agendamento, Aviso, ConfirmacaoOnline, PedidoOnline, ServicoPublico, Categoria, ConfigLoja, MensagemWhatsApp, ResultadoEnvio, SituacaoWhatsApp, TipoMensagem, Lancamento, Lembrete, Pet, PrecoServico, RegistroHistorico, Resumo, StatusAgendamento, TipoLancamento,
   TipoServico, Tutor,
 } from "./tipos";
 
@@ -207,7 +207,7 @@ function validarVacina(d: NovaVacina) {
 
 /* ---------- agenda ---------- */
 
-export type NovoAgendamento = Pick<Agendamento, "petId" | "data" | "hora" | "tipo" | "descricao">;
+export type NovoAgendamento = Pick<Agendamento, "petId" | "data" | "hora" | "tipo" | "descricao" | "buscaMoto" | "enderecoBusca">;
 
 export async function listarAgenda(data: string): Promise<Agendamento[]> {
   if (!modoDemonstracao) return chamar(`/agenda?data=${data}`);
@@ -218,7 +218,8 @@ export async function listarAgenda(data: string): Promise<Agendamento[]> {
 export async function criarAgendamento(dados: NovoAgendamento): Promise<Agendamento> {
   if (!modoDemonstracao) return chamar(`/agenda`, { method: "POST", body: JSON.stringify(dados) });
   garantirIntervalo(dados.data, dados.hora, null);
-  const a = { ...dados, id: novoId(), status: "AGUARDANDO" as StatusAgendamento, valor: null };
+  if (dados.buscaMoto && !dados.enderecoBusca.trim()) throw new Error("Informe o endereço para a busca de moto");
+  const a = { ...dados, id: novoId(), status: "AGUARDANDO" as StatusAgendamento, valor: null, canal: "PAINEL" as const };
   db.agendamentos.push(a);
   return comNomes(a);
 }
@@ -500,4 +501,86 @@ export async function listarAvisos(): Promise<Aviso[]> {
         detalhe: "O WhatsApp está no modo simulado (sem a API oficial). Os lembretes ficam só registrados.",
         acao: "Mande por clique na tela WhatsApp, ou configure a WhatsApp Cloud API no servidor (README, seção 4)." }]
     : [];
+}
+
+/* ---------- agendamento online (público, sem login) ---------- */
+
+async function publico<T>(caminho: string, init: RequestInit = {}): Promise<T> {
+  const res = await fetch(`${API_URL}/api/publico/lojas/${loja.slug}${caminho}`, {
+    ...init,
+    headers: { "Content-Type": "application/json", ...init.headers },
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    const corpo = await res.json().catch(() => null);
+    const campos = corpo?.campos ? Object.values(corpo.campos as Record<string, string>) : [];
+    throw new Error(campos.length ? campos.join(" · ") : (corpo?.detail ?? "Não foi possível concluir. Tente de novo ou chame no WhatsApp."));
+  }
+  return res.json();
+}
+
+/** Dados públicos da loja (nome, WhatsApp...) para as páginas sem login. */
+export async function buscarLojaPublica(): Promise<ConfigLoja> {
+  if (!modoDemonstracao) return publico(``);
+  return { ...db.config };
+}
+
+export async function listarServicosPublicos(): Promise<ServicoPublico[]> {
+  if (!modoDemonstracao) return publico(`/servicos`);
+  return db.precos.map((p) => ({ tipo: p.tipo, nome: NOMES_SERVICO_PUBLICO[p.tipo], preco: p.valor }));
+}
+
+const NOMES_SERVICO_PUBLICO: Record<TipoServico, string> = {
+  BANHO: "Banho", TOSA: "Tosa", BANHO_E_TOSA: "Banho e tosa", VACINA: "Vacina", CONSULTA: "Consulta",
+};
+
+/** Mesma regra da API: funcionamento da loja, de intervalo em intervalo, longe de outros atendimentos, 1 h de antecedência. */
+export async function horariosLivres(data: string): Promise<string[]> {
+  if (!modoDemonstracao) return publico(`/horarios?data=${data}`);
+  const c = db.config;
+  const h = hoje();
+  if (data < h || data > somarDias(h, 60)) return [];
+  const dia = new Date(`${data}T12:00:00`).getDay();
+  const [abre, fecha] = dia === 0 ? [null, null] : dia === 6 ? [c.sabadoAbre, c.sabadoFecha] : [c.abre, c.fecha];
+  if (!abre || !fecha) return [];
+  const min = (x: string) => Number(x.slice(0, 2)) * 60 + Number(x.slice(3, 5));
+  const agora = new Date().toLocaleTimeString("en-GB", { timeZone: "America/Sao_Paulo", hour: "2-digit", minute: "2-digit" });
+  const minimo = data === h ? min(agora) + 60 : 0;
+  const ativos = db.agendamentos.filter((a) => a.data === data && a.status !== "CANCELADO");
+  const livres: string[] = [];
+  for (let m = min(abre); m + c.intervaloAgendaMinutos <= min(fecha); m += c.intervaloAgendaMinutos) {
+    if (m < minimo || ativos.some((a) => Math.abs(min(a.hora) - m) < c.intervaloAgendaMinutos)) continue;
+    livres.push(`${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`);
+  }
+  return livres;
+}
+
+export async function agendarOnline(p: PedidoOnline): Promise<ConfirmacaoOnline> {
+  if (!modoDemonstracao) return publico(`/agendamentos`, { method: "POST", body: JSON.stringify(p) });
+  if (p.site) throw new Error("Não foi possível concluir o agendamento.");
+  if (!p.aceiteDados) throw new Error("É preciso aceitar o uso dos dados para agendar");
+  if (p.buscaMoto && !p.enderecoBusca.trim()) throw new Error("Informe o endereço para a busca de moto");
+  if (!(await horariosLivres(p.data)).includes(p.hora)) throw new Error("Esse horário não está mais disponível. Escolha outro.");
+  const d = p.whatsapp.replace(/\D/g, "");
+  const local = d.startsWith("55") && d.length >= 12 ? d.slice(2) : d;
+  let tutor = db.tutores.find((t) => !t.removido && t.whatsapp.replace(/\D/g, "") === local);
+  if (!tutor) {
+    const origens: Record<string, string> = { instagram: "Instagram", google: "Google", whatsapp: "WhatsApp", indicacao: "Indicação" };
+    tutor = { id: novoId(), nome: p.nome.trim(), whatsapp: local, endereco: "", cpf: "", origem: origens[p.origem] ?? "Site" };
+    db.tutores.push(tutor);
+  }
+  const tutorId = tutor.id;
+  let pet = db.pets.find((x) => x.tutorId === tutorId && x.nome.toLowerCase() === p.petNome.trim().toLowerCase());
+  if (!pet) {
+    pet = { id: novoId(), tutorId, nome: p.petNome.trim(), especie: p.especie, raca: "", pesoKg: null, observacoes: "", intervaloBanhoDias: null, ultimoBanho: null };
+    db.pets.push(pet);
+  }
+  const a = { id: novoId(), petId: pet.id, data: p.data, hora: p.hora, tipo: p.tipo, descricao: p.observacao, status: "AGUARDANDO" as StatusAgendamento,
+    valor: null, canal: "ONLINE" as const, buscaMoto: p.buscaMoto, enderecoBusca: p.buscaMoto ? p.enderecoBusca : "" };
+  db.agendamentos.push(a);
+  const servico = NOMES_SERVICO_PUBLICO[p.tipo].toLowerCase();
+  const [, mm, dd] = p.data.split("-");
+  const mensagem = `Olá, ${p.nome.trim().split(/\s+/)[0]}! Recebemos seu agendamento: ${servico} do ${pet.nome} em ${dd}/${mm} às ${p.hora}${p.buscaMoto ? " (com busca de moto)" : ""}. A ${db.config.nome} confirma pelo WhatsApp.`;
+  simular(local, "CONFIRMACAO", mensagem);
+  return { data: `${dd}/${mm}`, hora: p.hora, servico, petNome: pet.nome, buscaMoto: p.buscaMoto, mensagem };
 }

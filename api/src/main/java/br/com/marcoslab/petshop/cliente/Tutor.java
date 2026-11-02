@@ -33,6 +33,10 @@ public class Tutor {
     @Column(name = "criado_em", nullable = false)
     private Instant criadoEm;
 
+    /** Quando o cliente aceitou receber promoções (LGPD). null = não aceitou: nunca recebe campanha. */
+    @Column(name = "consentimento_marketing_em")
+    private Instant consentimentoMarketingEm;
+
     /** Preenchido quando o cliente é excluído mas tinha atendimento concluído (dados pessoais apagados). */
     @Column(name = "removido_em")
     private Instant removidoEm;
@@ -71,6 +75,13 @@ public class Tutor {
         this.origem = null;
         this.removidoEm = agora;
     }
+
+    /** Registra o aceite de promoções (só a primeira data; sair da lista é pelo link de descadastro). */
+    public void aceitarPromocoes(Instant quando) {
+        if (consentimentoMarketingEm == null) this.consentimentoMarketingEm = quando;
+    }
+
+    public Instant getConsentimentoMarketingEm() { return consentimentoMarketingEm; }
 
     public Long getId() { return id; }
     public Loja getLoja() { return loja; }

@@ -22,4 +22,12 @@ public interface TutorRepository extends JpaRepository<Tutor, Long> {
     List<Tutor> buscar(@Param("lojaId") Long lojaId, @Param("busca") String busca);
 
     Optional<Tutor> findByIdAndLojaIdAndRemovidoEmIsNull(Long id, Long lojaId);
+
+    /** Cliente pelo WhatsApp (com ou sem o 55 na frente), para não duplicar cadastro. */
+    @Query("""
+            select t from Tutor t
+            where t.loja.id = :lojaId and t.removidoEm is null and t.whatsapp in (:local, :comPais)
+            order by t.id
+            """)
+    List<Tutor> porWhatsapp(@Param("lojaId") Long lojaId, @Param("local") String local, @Param("comPais") String comPais);
 }

@@ -16,6 +16,10 @@ const amanha = somarDias(H, 1);
 let seq = 5000; // acima dos ids de exemplo
 const novoId = () => ++seq;
 
+/** Agendamento guardado na demonstração: canal e busca de moto são opcionais (os exemplos antigos não têm). */
+export type AgendamentoDemo = Omit<Agendamento, "petNome" | "tutorNome" | "canal" | "buscaMoto" | "enderecoBusca"> &
+  Partial<Pick<Agendamento, "canal" | "buscaMoto" | "enderecoBusca">>;
+
 /* ---------- financeiro de exemplo ---------- */
 
 const CATEGORIAS: Categoria[] = (
@@ -72,10 +76,10 @@ function lancamentosDeExemplo(): LancamentoDemo[] {
 }
 
 /** Atendimentos concluídos desde o 1º dia de 2 meses atrás (sem domingo), mesmo período dos custos de exemplo. */
-function historicoDeAtendimentos(): Omit<Agendamento, "petNome" | "tutorNome">[] {
+function historicoDeAtendimentos(): AgendamentoDemo[] {
   const inicio = `${somarMeses(mesAtual(), -2)}-01`;
   const ciclo: [number, TipoServico, number][] = [[21, "BANHO", 50], [11, "BANHO_E_TOSA", 90], [31, "TOSA", 60], [12, "BANHO", 50], [21, "VACINA", 80]];
-  const lista: Omit<Agendamento, "petNome" | "tutorNome">[] = [];
+  const lista: AgendamentoDemo[] = [];
   for (let d = 1; somarDias(H, -d) >= inicio; d++) {
     const data = somarDias(H, -d);
     if (new Date(`${data}T12:00:00`).getDay() === 0) continue;
@@ -113,7 +117,7 @@ export const db = {
     { id: 4, petId: 31, data: H, hora: "14:00", tipo: "CONSULTA", descricao: "Consulta", status: "AGUARDANDO", valor: null },
     { id: 5, petId: 21, data: amanha, hora: "10:30", tipo: "BANHO_E_TOSA", descricao: "Banho e tosa", status: "CONFIRMADO", valor: null },
     ...historicoDeAtendimentos(),
-  ] as Omit<Agendamento, "petNome" | "tutorNome">[],
+  ] as AgendamentoDemo[],
   enviados: new Set<string>(),
   config: { ...configExemplo } as ConfigLoja,
   whatsapp: { oficial: false, lembretesAutomaticos: false, respostaRapida: false, textoRespostaRapida: "" } as SituacaoWhatsApp,
@@ -137,10 +141,10 @@ export function descrever(l: Lancamento): string {
   return `${l.data} · ${l.tipo} · ${l.categoriaNome} · R$ ${l.valor.toFixed(2)}${l.descricao ? ` · ${l.descricao}` : ""}${l.recorrente ? " · recorrente" : ""}`;
 }
 
-export function comNomes(a: Omit<Agendamento, "petNome" | "tutorNome">): Agendamento {
+export function comNomes(a: AgendamentoDemo): Agendamento {
   const pet = db.pets.find((p) => p.id === a.petId)!;
   const tutor = db.tutores.find((t) => t.id === pet.tutorId)!;
-  return { ...a, petNome: pet.nome, tutorNome: tutor.nome };
+  return { canal: "PAINEL", buscaMoto: false, enderecoBusca: "", ...a, petNome: pet.nome, tutorNome: tutor.nome };
 }
 
 export function tutorCompleto(t: Omit<Tutor, "pets">): Tutor {

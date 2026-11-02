@@ -30,7 +30,8 @@ export default async function Site() {
               Agende pelo WhatsApp. A gente avisa quando chegar o dia do próximo banho ou da próxima vacina.
             </p>
             <div className="flex flex-wrap gap-3">
-              <a href={whats} className="btn bg-caramelo text-verde-escuro">Agendar pelo WhatsApp</a>
+              <Link href="/agendar" className="btn bg-caramelo text-verde-escuro">Agendar online</Link>
+              <a href={whats} className="btn border-verde-linha text-white">Agendar pelo WhatsApp</a>
               <a href="#servicos" className="btn border-verde-linha text-white">Ver serviços</a>
             </div>
           </div>

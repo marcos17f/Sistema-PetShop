@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Carregando, Erro, Titulo } from "@/components/Ui";
 import { buscarConfig, salvarConfig } from "@/lib/api";
+import { linkWhatsapp } from "@/lib/loja";
 import type { ConfigLoja } from "@/lib/tipos";
 
 /** Tela para o dono mudar os dados da loja sem programador. O site público passa a mostrar em até 1 minuto. */
@@ -97,7 +98,35 @@ export default function Configuracoes() {
           {campo("Instagram (só o usuário, sem @)", "instagram", { maxLength: 30, placeholder: "petshopdocleiton" })}
           {campo("Link de avaliação do Google", "linkAvaliacao", { type: "url", maxLength: 300, placeholder: "https://g.page/r/..." })}
         </div>
+        <LinksDivulgacao whatsapp={c.whatsapp} />
       </section>
     </form>
+  );
+}
+
+/** Links prontos para a bio e o direct do Instagram: o cliente cai no agendamento ou no WhatsApp já marcado como "Instagram". */
+function LinksDivulgacao({ whatsapp }: { whatsapp: string }) {
+  const [base, setBase] = useState("");
+  const [copiado, setCopiado] = useState<string | null>(null);
+  useEffect(() => setBase(window.location.origin), []);
+  const links = [
+    { rotulo: "Link para a bio do Instagram (agendamento online)", valor: `${base}/agendar?origem=instagram` },
+    { rotulo: "WhatsApp com mensagem pronta (para o direct e os destaques)", valor: linkWhatsapp(whatsapp, "Olá! Vim pelo Instagram e quero agendar um horário.") },
+  ];
+  return (
+    <div className="flex flex-col gap-2.5 rounded-2xl bg-fundo p-4">
+      <p className="m-0 text-sm font-semibold">Links para divulgar (quem chega por eles é cadastrado com a origem certa):</p>
+      {links.map((l) => (
+        <label key={l.rotulo} className="flex flex-col gap-1.5">
+          <span className="rotulo">{l.rotulo}</span>
+          <span className="flex gap-2">
+            <input className="campo flex-1" readOnly value={l.valor} onFocus={(e) => e.target.select()} />
+            <button type="button" className="btn btn-claro" onClick={async () => {
+              try { await navigator.clipboard.writeText(l.valor); setCopiado(l.rotulo); } catch { setCopiado(null); }
+            }}>{copiado === l.rotulo ? "Copiado!" : "Copiar"}</button>
+          </span>
+        </label>
+      ))}
+    </div>
   );
 }

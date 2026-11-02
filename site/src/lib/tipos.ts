@@ -47,6 +47,11 @@ export type Agendamento = {
   status: StatusAgendamento;
   /** Valor cobrado (receita quando concluído); null = ainda não definido. */
   valor: number | null;
+  /** Por onde chegou: painel da loja ou agendamento online do cliente. */
+  canal: "PAINEL" | "ONLINE";
+  /** A loja busca o pet de moto no endereço. */
+  buscaMoto: boolean;
+  enderecoBusca: string;
 };
 
 export type TipoLembrete = "VACINA" | "BANHO" | "AGENDAMENTO";
@@ -200,3 +205,29 @@ export const NOMES_MENSAGEM: Record<TipoMensagem, string> = {
 /* ---------- avisos do sistema ---------- */
 
 export type Aviso = { nivel: "CRITICO" | "ATENCAO" | "INFO"; area: string; titulo: string; detalhe: string; acao: string };
+
+/* ---------- agendamento online (página /agendar, sem login) ---------- */
+
+export type ServicoPublico = { tipo: TipoServico; nome: string; preco: number | null };
+
+export type PedidoOnline = {
+  nome: string;
+  whatsapp: string;
+  petNome: string;
+  especie: "Cão" | "Gato" | "Outro";
+  tipo: TipoServico;
+  data: string;
+  hora: string;
+  observacao: string;
+  buscaMoto: boolean;
+  enderecoBusca: string;
+  /** LGPD: obrigatório para agendar. */
+  aceiteDados: boolean;
+  /** LGPD: opcional; só com ele o cliente recebe promoções. */
+  aceitePromocoes: boolean;
+  origem: string;
+  /** Campo invisível contra robôs (pessoas deixam vazio). */
+  site: string;
+};
+
+export type ConfirmacaoOnline = { data: string; hora: string; servico: string; petNome: string; buscaMoto: boolean; mensagem: string };

@@ -61,6 +61,10 @@ Login do painel: usuário `loja`, senha `troque-esta-senha` (padrão de desenvol
 | `WHATSAPP_PHONE_NUMBER_ID` | vazio | Id do número na Meta (WhatsApp → Configuração da API) |
 | `WHATSAPP_API_URL` | `https://graph.facebook.com/v23.0` | Versão da Graph API (atualizar quando a Meta descontinuar a versão) |
 | `WHATSAPP_TEMPLATE_LEMBRETE` | `lembrete_pet` | Nome do modelo de lembrete aprovado na Meta |
+| `WHATSAPP_TEMPLATE_CONFIRMACAO` | `confirmacao_agendamento` | Modelo da confirmação do agendamento online |
+| `WHATSAPP_APP_SECRET` | vazio | Segredo do app na Meta: confere a assinatura do webhook (sem ele, o webhook recusa tudo) |
+| `WHATSAPP_VERIFY_TOKEN` | vazio | Token que você inventa e informa na Meta ao cadastrar o webhook |
+| `SITE_URL` | `http://localhost:3001` | Endereço público do site (vai no link da resposta rápida) |
 
 ## 3. Endpoints (todos com HTTP Basic)
 
@@ -82,6 +86,9 @@ Base: `/api/lojas/{slug}`
 | PATCH | `/agenda/{id}/status` | Muda status e, opcional, `valor` cobrado. Concluir sem valor usa o preço padrão do serviço. Banho concluído atualiza o "último banho" do pet |
 | GET / PUT | `/config` | Configurações da loja (nome, WhatsApp, endereço, horários, intervalo da agenda, Instagram, link de avaliação) |
 | GET | `/api/publico/lojas/{slug}` | **Sem login**: dados públicos da loja para o site (só leitura) |
+| GET | `/api/publico/lojas/{slug}/servicos` e `/horarios?data=` | **Sem login**: serviços com preço e horários livres do dia |
+| POST | `/api/publico/lojas/{slug}/agendamentos` | **Sem login**: agendamento online (limite de 5/h por endereço, campo contra robôs, aceite LGPD) |
+| GET / POST | `/api/publico/whatsapp/webhook` | Webhook da Meta (verificação + mensagens recebidas, só com assinatura válida) |
 | GET | `/lembretes?data=` | Lembretes do dia (agendamentos, reforço de vacina, retorno de banho) |
 | POST | `/lembretes/enviados` | Marca lembrete como enviado |
 | GET/POST | `/financeiro/categorias` | Categorias de custo/receita (as padrão vêm na migration) |
@@ -113,14 +120,32 @@ Tela **Painel → WhatsApp**: modo (simulado ou oficial), lembretes automáticos
   |---|---|---|---|
   | `lembrete_pet` | Utilidade | Português (BR) | `Lembrete de {{1}}: {{2}} Responda esta mensagem para confirmar ou remarcar.` |
 
-  `{{1}}` = nome da loja, `{{2}}` = texto do lembrete (ex.: "Olá, Ana! Amanhã é dia da vacina V10 do Thor.").
+  | `confirmacao_agendamento` | Utilidade | Português (BR) | `Agendamento recebido em {{1}}: {{2}}. Responda se precisar mudar algo.` |
+
+  `{{1}}` = nome da loja; `{{2}}` = texto (ex.: "Olá, Ana! Amanhã é dia da vacina V10 do Thor." ou "banho do Thor em 05/11 às 10:00").
+- **Webhook (mensagens recebidas):** na Meta, *WhatsApp → Configuração → Webhook*: URL `https://SUA-API/api/publico/whatsapp/webhook`,
+  token de verificação = `WHATSAPP_VERIFY_TOKEN`, assinar o campo `messages`. Quem escreve vira cliente (origem WhatsApp ou
+  Instagram, se citar) e, com a **resposta rápida** ligada, recebe o link do agendamento online (uma vez a cada 24 h).
 - **Custos:** a Meta cobra por mensagem de modelo (lembrete = utilidade; campanha = marketing) e as regras mudaram em
   2025/2026 (franquia mensal grátis de mensagens de atendimento, janela grátis de 72 h para quem vem de anúncio
   clique-para-WhatsApp). Confira a tabela atual em
   [Preços da WhatsApp Business Platform](https://developers.facebook.com/documentation/business-messaging/whatsapp/pricing)
   antes de ligar o envio automático. Para começar sem custo: modo simulado (envio por clique) + número de teste da Meta.
 
-## 5. Financeiro
+## 5. Agendamento online (página /agendar)
+
+O cliente escolhe o serviço (com preço "a partir de"), o dia e **só os horários livres** (funcionamento da loja, intervalo
+entre atendimentos, 1 h de antecedência, até 60 dias, domingo fechado), informa nome, WhatsApp, pet e se quer **busca de
+moto** (com endereço). Aceite LGPD obrigatório; promoções só se marcar.
+
+- Cai no painel como **Aguardando**, com os selos *Agendou online* e *Busca de moto*; confirmação no WhatsApp
+  (simulada sem a API oficial: aparece na tela WhatsApp para mandar por clique).
+- Cliente do mesmo WhatsApp é reaproveitado (pet pelo nome), **sem revelar nem sobrescrever** dados de ninguém.
+- Proteções: mesma trava/intervalo da agenda, limite por endereço, campo invisível contra robôs, validação de tudo.
+- Divulgação: em **Configurações → Divulgação** há o link da bio (`/agendar?origem=instagram`) e o link do WhatsApp com
+  "Vim pelo Instagram"; quem chega por eles fica com a origem certa no cadastro.
+
+## 6. Financeiro
 
 Tela **Painel → Financeiro**: escolha o mês e veja receita, custos fixos e variáveis, lucro (verde/vermelho),
 despesas eventuais, atendimentos e **custo médio por atendimento** ((fixos + variáveis) ÷ atendimentos concluídos), comparando com o mês anterior.
@@ -139,7 +164,7 @@ despesas eventuais, atendimentos e **custo médio por atendimento** ((fixos + va
   - **Receitas, Custos fixos, Custos variáveis, Despesas eventuais**: um lançamento por linha, cabeçalho fixo e total.
 - Valores sempre com 2 casas (`NUMERIC` no banco, `BigDecimal` na API); datas no fuso de Goiânia (`America/Sao_Paulo`).
 
-## 6. Segurança e LGPD
+## 7. Segurança e LGPD
 
 - **Histórico de alterações imutável:** todo lançamento criado/alterado/excluído, cada preço e cada valor cobrado em
   atendimento ficam registrados (usuário, data/hora, antes e depois). A API não tem rota para editar nem apagar o histórico,
@@ -166,7 +191,7 @@ despesas eventuais, atendimentos e **custo médio por atendimento** ((fixos + va
 - **Dependências:** versões fixadas. `npm audit --omit=dev` ainda aponta um `postcss` interno do Next.js usado só na hora do
   build (processa o nosso CSS, não dados de usuário); some quando o Next 15 publicar a correção.
 
-## 7. Saúde do sistema (avisos)
+## 8. Saúde do sistema (avisos)
 
 Tela **Painel → Saúde do sistema** e faixa no topo do painel: o sistema confere sozinho e avisa **antes** de algo parar,
 sempre dizendo o que fazer:
@@ -182,7 +207,7 @@ sempre dizendo o que fazer:
 (ou similar) para receber e-mail/WhatsApp se o sistema cair. A rota responde só `{"status":"UP"}` (sem detalhes); o resto
 do actuator fica bloqueado.
 
-## 8. Publicar (opção gratuita)
+## 9. Publicar (opção gratuita)
 
 - Site: Cloudflare Pages (`npm run build`), com `NEXT_PUBLIC_API_URL` apontando para a API.
 - API + banco: Oracle Cloud Always Free (VM com Docker). Use o `Dockerfile` da pasta `api`.
@@ -194,7 +219,7 @@ do actuator fica bloqueado.
   Instagram, link de avaliação do Google). Hoje são de exemplo (fictícios).
 - [ ] **Combinar o intervalo entre agendamentos** com o Cleiton (hoje 40 min): também na tela Configurações.
 - [ ] Preços reais dos serviços (tela Financeiro → Preços dos serviços).
-- [ ] Gerar a senha forte do painel com bcrypt (comando na seção 6) e colocar em `PAINEL_SENHA` no servidor.
+- [ ] Gerar a senha forte do painel com bcrypt (comando na seção 7) e colocar em `PAINEL_SENHA` no servidor.
 - [ ] Agendar o `backup.sh` no cron do servidor e guardar cópia fora dele.
 - [ ] Fotos reais da loja no site (com autorização dos tutores que aparecerem).
 - [ ] Trocar o JDK da IDE para o 21 (*File → Project Structure → SDK*).

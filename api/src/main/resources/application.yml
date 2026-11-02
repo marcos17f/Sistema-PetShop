@@ -37,6 +37,8 @@ app:
     loja-slug: ${PAINEL_LOJA:petshop-cleiton}
   lembrete:
     cron: "0 0 18 * * *"
+  # Endereço público do site (vai no link da resposta rápida e das mensagens)
+  site-url: ${SITE_URL:http://localhost:3001}
   limites:
     # Avisos do sistema (tela Saúde do sistema): quando chegar perto destes limites, o painel avisa
     whatsapp-mensagens-mes: ${LIMITE_WHATSAPP_MES:1000}   # franquia/plano de mensagens enviadas por mês
@@ -49,3 +51,7 @@ app:
     phone-number-id: ${WHATSAPP_PHONE_NUMBER_ID:}
     api-url: ${WHATSAPP_API_URL:https://graph.facebook.com/v23.0}
     template-lembrete: ${WHATSAPP_TEMPLATE_LEMBRETE:lembrete_pet}
+    template-confirmacao: ${WHATSAPP_TEMPLATE_CONFIRMACAO:confirmacao_agendamento}
+    # Webhook (mensagens recebidas): segredo do app na Meta (confere a assinatura) e token de verificação
+    app-secret: ${WHATSAPP_APP_SECRET:}
+    verify-token: ${WHATSAPP_VERIFY_TOKEN:}

@@ -20,6 +20,13 @@ public class Erros {
         }
     }
 
+    /** Limite de uso atingido (ex.: muitos agendamentos online do mesmo endereço). */
+    public static class MuitasTentativas extends RuntimeException {
+        public MuitasTentativas(String mensagem) {
+            super(mensagem);
+        }
+    }
+
     public static class Conflito extends RuntimeException {
         public Conflito(String mensagem) {
             super(mensagem);
@@ -29,6 +36,11 @@ public class Erros {
     @ExceptionHandler(NaoEncontrado.class)
     public ProblemDetail naoEncontrado(NaoEncontrado e) {
         return ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, e.getMessage());
+    }
+
+    @ExceptionHandler(MuitasTentativas.class)
+    public ProblemDetail muitasTentativas(MuitasTentativas e) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.TOO_MANY_REQUESTS, e.getMessage());
     }
 
     @ExceptionHandler(Conflito.class)

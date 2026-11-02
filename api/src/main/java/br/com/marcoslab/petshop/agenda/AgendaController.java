@@ -11,6 +11,7 @@ import br.com.marcoslab.petshop.loja.Loja;
 import br.com.marcoslab.petshop.loja.LojaService;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.NotNull;
@@ -21,12 +22,11 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
-import java.time.Clock;
-import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
-import java.util.Objects;
+
+import static br.com.marcoslab.petshop.cliente.ClienteDtos.vazioParaNull;
 
 @RestController
 @RequestMapping("/api/lojas/{slug}/agenda")
@@ -37,7 +37,18 @@ public class AgendaController {
             @NotNull(message = "Informe a data") LocalDate data,
             @NotNull(message = "Informe a hora") @JsonFormat(pattern = "HH:mm") LocalTime hora,
             @NotNull(message = "Escolha o serviço") TipoServico tipo,
-            @Size(max = 200) String descricao) {
+            @Size(max = 200) String descricao,
+            Boolean buscaMoto,
+            @Size(max = 200) String enderecoBusca) {
+
+        @AssertTrue(message = "Informe o endereço para a busca de moto")
+        public boolean isEnderecoDaBusca() {
+            return !Boolean.TRUE.equals(buscaMoto) || (enderecoBusca != null && !enderecoBusca.isBlank());
+        }
+
+        boolean moto() {
+            return Boolean.TRUE.equals(buscaMoto);
+        }
     }
 
     /** valor é opcional: ao concluir sem valor, usa o preço padrão do serviço. */
@@ -48,11 +59,13 @@ public class AgendaController {
 
     public record AgendamentoDto(Long id, Long petId, String petNome, String tutorNome, LocalDate data,
                                  @JsonFormat(pattern = "HH:mm") LocalTime hora, TipoServico tipo, String descricao,
-                                 StatusAgendamento status, BigDecimal valor) {
+                                 StatusAgendamento status, BigDecimal valor, Canal canal, boolean buscaMoto,
+                                 String enderecoBusca) {
         public static AgendamentoDto de(Agendamento a) {
             Pet p = a.getPet();
             return new AgendamentoDto(a.getId(), p.getId(), p.getNome(), p.getTutor().getNome(), a.getData(), a.getHora(),
-                    a.getTipo(), a.getDescricao() == null ? "" : a.getDescricao(), a.getStatus(), a.getValor());
+                    a.getTipo(), a.getDescricao() == null ? "" : a.getDescricao(), a.getStatus(), a.getValor(), a.getCanal(),
+                    a.isBuscaMoto(), a.getEnderecoBusca() == null ? "" : a.getEnderecoBusca());
         }
     }
 
@@ -61,16 +74,16 @@ public class AgendaController {
     private final AgendamentoRepository agenda;
     private final PrecoServicoRepository precos;
     private final AuditoriaService auditoria;
-    private final Clock clock;
+    private final AgendaService regras;
 
     public AgendaController(LojaService lojas, ClienteService clientes, AgendamentoRepository agenda,
-                            PrecoServicoRepository precos, AuditoriaService auditoria, Clock clock) {
+                            PrecoServicoRepository precos, AuditoriaService auditoria, AgendaService regras) {
         this.lojas = lojas;
+        this.regras = regras;
         this.auditoria = auditoria;
         this.precos = precos;
         this.clientes = clientes;
         this.agenda = agenda;
-        this.clock = clock;
     }
 
     @GetMapping
@@ -86,10 +99,8 @@ public class AgendaController {
     public AgendamentoDto criar(@PathVariable String slug, @Valid @RequestBody NovoAgendamento dados) {
         Loja loja = lojas.buscar(slug);
         Pet pet = clientes.petDaLoja(loja, dados.petId());
-        lojas.travarAgenda(loja);
-        garantirIntervalo(loja, dados.data(), dados.hora(), null);
-        String descricao = dados.descricao() == null || dados.descricao().isBlank() ? null : dados.descricao().trim();
-        Agendamento a = agenda.save(new Agendamento(loja, pet, dados.data(), dados.hora(), dados.tipo(), descricao, clock.instant()));
+        Agendamento a = regras.agendar(loja, pet, dados.data(), dados.hora(), dados.tipo(), vazioParaNull(dados.descricao()),
+                dados.moto(), vazioParaNull(dados.enderecoBusca()), Canal.PAINEL);
         return AgendamentoDto.de(a);
     }
 
@@ -104,9 +115,9 @@ public class AgendaController {
         }
         Pet pet = clientes.petDaLoja(loja, dados.petId());
         lojas.travarAgenda(loja);
-        garantirIntervalo(loja, dados.data(), dados.hora(), id);
-        String descricao = dados.descricao() == null || dados.descricao().isBlank() ? null : dados.descricao().trim();
-        a.remarcar(pet, dados.data(), dados.hora(), dados.tipo(), descricao);
+        regras.garantirIntervalo(loja, dados.data(), dados.hora(), id);
+        a.remarcar(pet, dados.data(), dados.hora(), dados.tipo(), vazioParaNull(dados.descricao()), dados.moto(),
+                vazioParaNull(dados.enderecoBusca()));
         return AgendamentoDto.de(a);
     }
 
@@ -139,7 +150,7 @@ public class AgendaController {
         }
         if (a.getStatus() == StatusAgendamento.CANCELADO && corpo.status() != StatusAgendamento.CANCELADO) {
             lojas.travarAgenda(loja); // reativar um cancelado: o horário pode ter sido ocupado nesse meio tempo
-            garantirIntervalo(loja, a.getData(), a.getHora(), a.getId());
+            regras.garantirIntervalo(loja, a.getData(), a.getHora(), a.getId());
         }
         BigDecimal valorAntes = a.getValor();
         StatusAgendamento statusAntes = a.getStatus();
@@ -152,21 +163,5 @@ public class AgendaController {
                     a.getStatus() + " · R$ " + (a.getValor() == null ? "-" : a.getValor().toPlainString()));
         }
         return AgendamentoDto.de(a);
-    }
-
-    /**
-     * Entre um atendimento e outro precisa haver pelo menos o intervalo da loja (tela Configurações)
-     * (de qualquer cliente). Ex.: com 40 min e um banho às 09:00, só dá para marcar até 08:20 ou a partir de 09:40.
-     */
-    private void garantirIntervalo(Loja loja, LocalDate data, LocalTime hora, Long ignorar) {
-        int intervaloMinutos = loja.getIntervaloAgendaMinutos();
-        agenda.ativosDoDia(loja.getId(), data).stream()
-                .filter(o -> !Objects.equals(o.getId(), ignorar))
-                .filter(o -> Math.abs(Duration.between(o.getHora(), hora).toMinutes()) < intervaloMinutos)
-                .findFirst()
-                .ifPresent(o -> {
-                    throw new Erros.Conflito("Muito perto do atendimento das %s. Deixe pelo menos %d minutos entre um atendimento e outro."
-                            .formatted(o.getHora(), intervaloMinutos));
-                });
     }
 }

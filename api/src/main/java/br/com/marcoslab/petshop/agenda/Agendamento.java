@@ -48,10 +48,25 @@ public class Agendamento {
     @Column(name = "criado_em", nullable = false)
     private Instant criadoEm;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private Canal canal = Canal.PAINEL;
+
+    /** A loja busca o pet de moto no endereço informado. */
+    @Column(name = "busca_moto", nullable = false)
+    private boolean buscaMoto;
+
+    @Column(name = "endereco_busca")
+    private String enderecoBusca;
+
     protected Agendamento() {
     }
 
-    public Agendamento(Loja loja, Pet pet, LocalDate data, LocalTime hora, TipoServico tipo, String descricao, Instant criadoEm) {
+    public Agendamento(Loja loja, Pet pet, LocalDate data, LocalTime hora, TipoServico tipo, String descricao,
+                       boolean buscaMoto, String enderecoBusca, Canal canal, Instant criadoEm) {
+        this.canal = canal;
+        this.buscaMoto = buscaMoto;
+        this.enderecoBusca = buscaMoto ? enderecoBusca : null;
         this.loja = loja;
         this.pet = pet;
         this.data = data;
@@ -63,7 +78,10 @@ public class Agendamento {
     }
 
     /** Corrige pet, serviço, data, hora ou detalhe de um agendamento ainda não concluído. */
-    public void remarcar(Pet pet, LocalDate data, LocalTime hora, TipoServico tipo, String descricao) {
+    public void remarcar(Pet pet, LocalDate data, LocalTime hora, TipoServico tipo, String descricao,
+                         boolean buscaMoto, String enderecoBusca) {
+        this.buscaMoto = buscaMoto;
+        this.enderecoBusca = buscaMoto ? enderecoBusca : null;
         this.pet = pet;
         this.data = data;
         this.hora = hora;
@@ -93,4 +111,7 @@ public class Agendamento {
     public String getDescricao() { return descricao; }
     public StatusAgendamento getStatus() { return status; }
     public BigDecimal getValor() { return valor; }
+    public Canal getCanal() { return canal; }
+    public boolean isBuscaMoto() { return buscaMoto; }
+    public String getEnderecoBusca() { return enderecoBusca; }
 }

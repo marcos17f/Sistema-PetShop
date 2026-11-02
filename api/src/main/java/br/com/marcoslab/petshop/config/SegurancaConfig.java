@@ -42,6 +42,8 @@ public class SegurancaConfig {
                         .requestMatchers("/error").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/publico/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/actuator/health").permitAll()
+                        // agendamento online (cliente final) e webhook do WhatsApp: sem login, com as próprias proteções
+                        .requestMatchers(HttpMethod.POST, "/api/publico/lojas/*/agendamentos", "/api/publico/whatsapp/webhook").permitAll()
                         .requestMatchers("/api/**").authenticated()
                         .anyRequest().denyAll())
                 // 401 sem o cabeçalho WWW-Authenticate, para o navegador não abrir a janela nativa de login

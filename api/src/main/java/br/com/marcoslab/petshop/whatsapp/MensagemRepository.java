@@ -33,6 +33,13 @@ public interface MensagemRepository extends JpaRepository<MensagemWhatsApp, Long
             """)
     long falhasDeAcesso(@Param("lojaId") Long lojaId, @Param("desde") Instant desde);
 
+    @Query("""
+            select count(m) > 0 from MensagemWhatsApp m
+            where m.loja.id = :lojaId and m.para = :para and m.tipo = :tipo and m.criadoEm >= :desde
+            """)
+    boolean enviadaDesde(@Param("lojaId") Long lojaId, @Param("para") String para,
+                         @Param("tipo") MensagemWhatsApp.Tipo tipo, @Param("desde") Instant desde);
+
     @Modifying
     @Query("delete from MensagemWhatsApp m where m.criadoEm < :antes")
     int apagarAntesDe(@Param("antes") Instant antes);

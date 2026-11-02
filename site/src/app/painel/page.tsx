@@ -117,6 +117,12 @@ export default function Agenda() {
                     {a.petNome} <span className="font-medium text-muted">· {a.tutorNome}</span>
                   </span>
                   <span className="text-sm text-muted">{a.descricao || NOMES_SERVICO[a.tipo]}</span>
+                  {(a.canal === "ONLINE" || a.buscaMoto) && (
+                    <span className="mt-1 flex flex-wrap gap-1.5">
+                      {a.canal === "ONLINE" && <span className="chip bg-[#dce7fb] text-[#1e3a8a]">Agendou online</span>}
+                      {a.buscaMoto && <span className="chip bg-[#fdecc8] text-[#7a4a00]">Busca de moto: {a.enderecoBusca}</span>}
+                    </span>
+                  )}
                 </span>
                 <ChipStatus status={a.status} />
                 {a.status === "CONCLUIDO" && (
@@ -205,8 +211,9 @@ function NovoAgendamentoForm({ data, editando, aoSalvar, aoCancelar }: {
   const [tutores, setTutores] = useState<Tutor[]>([]);
   const [form, setForm] = useState<NovoAgendamento>(
     editando
-      ? { petId: editando.petId, data: editando.data, hora: editando.hora, tipo: editando.tipo, descricao: editando.descricao }
-      : { petId: 0, data, hora: "09:00", tipo: "BANHO", descricao: "" },
+      ? { petId: editando.petId, data: editando.data, hora: editando.hora, tipo: editando.tipo, descricao: editando.descricao,
+          buscaMoto: editando.buscaMoto, enderecoBusca: editando.enderecoBusca }
+      : { petId: 0, data, hora: "09:00", tipo: "BANHO", descricao: "", buscaMoto: false, enderecoBusca: "" },
   );
   const [erro, setErro] = useState<string | null>(null);
   const [salvando, setSalvando] = useState(false);
@@ -261,6 +268,16 @@ function NovoAgendamentoForm({ data, editando, aoSalvar, aoCancelar }: {
         <span className="rotulo">Detalhe (opcional)</span>
         <input className="campo" placeholder="Ex.: hidratação" value={form.descricao} onChange={(e) => setForm({ ...form, descricao: e.target.value })} />
       </label>
+      <label className="flex min-h-[46px] items-center gap-2 text-[15px] font-semibold">
+        <input type="checkbox" className="size-5 accent-verde" checked={form.buscaMoto} onChange={(e) => setForm({ ...form, buscaMoto: e.target.checked })} />
+        Busca de moto
+      </label>
+      {form.buscaMoto && (
+        <label className="flex flex-col gap-1.5">
+          <span className="rotulo">Endereço da busca</span>
+          <input className="campo" maxLength={200} value={form.enderecoBusca} onChange={(e) => setForm({ ...form, enderecoBusca: e.target.value })} />
+        </label>
+      )}
       <div className="flex gap-2">
         <button type="submit" disabled={salvando} className="btn btn-verde flex-1">{salvando ? "Salvando…" : editando ? "Salvar alterações" : "Salvar"}</button>
         {aoCancelar && <button type="button" className="btn btn-claro" onClick={aoCancelar}>Cancelar</button>}
