@@ -2,11 +2,12 @@
  * Dados de demonstração em memória, usados quando NEXT_PUBLIC_API_URL não está definido.
  * As regras (lembretes, último banho) são as mesmas da API em Spring Boot.
  */
+import { configExemplo } from "./loja";
 import { formatar, hoje, mesAtual, mesmoDiaNoProximoMes, proximoBanho, somarDias, somarMeses } from "./datas";
 import {
   NOMES_SERVICO,
   type AplicacaoVacina, type Agendamento, type Categoria, type Lancamento, type Lembrete, type Pet, type PrecoServico,
-  type RegistroHistorico, type ResumoMes, type TipoLancamento, type TipoServico, type Tutor,
+  type ConfigLoja, type RegistroHistorico, type ResumoMes, type TipoLancamento, type TipoServico, type Tutor,
 } from "./tipos";
 
 const H = hoje();
@@ -114,6 +115,7 @@ export const db = {
     ...historicoDeAtendimentos(),
   ] as Omit<Agendamento, "petNome" | "tutorNome">[],
   enviados: new Set<string>(),
+  config: { ...configExemplo } as ConfigLoja,
   /* financeiro (mesmos valores de exemplo da migration V3) */
   precos: [
     { tipo: "BANHO", valor: 50 }, { tipo: "TOSA", valor: 60 }, { tipo: "BANHO_E_TOSA", valor: 90 },

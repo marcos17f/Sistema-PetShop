@@ -16,8 +16,6 @@ app:
     usuario: loja
     senha: "{noop}senha-teste"
     loja-slug: petshop-cleiton
-  agenda:
-    intervalo-minutos: 40
   lembrete:
     cron: "-"
   whatsapp:

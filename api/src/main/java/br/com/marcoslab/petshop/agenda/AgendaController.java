@@ -15,7 +15,6 @@ import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.transaction.annotation.Transactional;
@@ -63,13 +62,10 @@ public class AgendaController {
     private final PrecoServicoRepository precos;
     private final AuditoriaService auditoria;
     private final Clock clock;
-    private final int intervaloMinutos;
 
     public AgendaController(LojaService lojas, ClienteService clientes, AgendamentoRepository agenda,
-                            PrecoServicoRepository precos, AuditoriaService auditoria, Clock clock,
-                            @Value("${app.agenda.intervalo-minutos}") int intervaloMinutos) {
+                            PrecoServicoRepository precos, AuditoriaService auditoria, Clock clock) {
         this.lojas = lojas;
-        this.intervaloMinutos = intervaloMinutos;
         this.auditoria = auditoria;
         this.precos = precos;
         this.clientes = clientes;
@@ -91,7 +87,7 @@ public class AgendaController {
         Loja loja = lojas.buscar(slug);
         Pet pet = clientes.petDaLoja(loja, dados.petId());
         lojas.travarAgenda(loja);
-        garantirIntervalo(loja.getId(), dados.data(), dados.hora(), null);
+        garantirIntervalo(loja, dados.data(), dados.hora(), null);
         String descricao = dados.descricao() == null || dados.descricao().isBlank() ? null : dados.descricao().trim();
         Agendamento a = agenda.save(new Agendamento(loja, pet, dados.data(), dados.hora(), dados.tipo(), descricao, clock.instant()));
         return AgendamentoDto.de(a);
@@ -108,7 +104,7 @@ public class AgendaController {
         }
         Pet pet = clientes.petDaLoja(loja, dados.petId());
         lojas.travarAgenda(loja);
-        garantirIntervalo(loja.getId(), dados.data(), dados.hora(), id);
+        garantirIntervalo(loja, dados.data(), dados.hora(), id);
         String descricao = dados.descricao() == null || dados.descricao().isBlank() ? null : dados.descricao().trim();
         a.remarcar(pet, dados.data(), dados.hora(), dados.tipo(), descricao);
         return AgendamentoDto.de(a);
@@ -143,7 +139,7 @@ public class AgendaController {
         }
         if (a.getStatus() == StatusAgendamento.CANCELADO && corpo.status() != StatusAgendamento.CANCELADO) {
             lojas.travarAgenda(loja); // reativar um cancelado: o horário pode ter sido ocupado nesse meio tempo
-            garantirIntervalo(lojaId, a.getData(), a.getHora(), a.getId());
+            garantirIntervalo(loja, a.getData(), a.getHora(), a.getId());
         }
         BigDecimal valorAntes = a.getValor();
         StatusAgendamento statusAntes = a.getStatus();
@@ -159,11 +155,12 @@ public class AgendaController {
     }
 
     /**
-     * Entre um atendimento e outro precisa haver pelo menos {@code app.agenda.intervalo-minutos}
+     * Entre um atendimento e outro precisa haver pelo menos o intervalo da loja (tela Configurações)
      * (de qualquer cliente). Ex.: com 40 min e um banho às 09:00, só dá para marcar até 08:20 ou a partir de 09:40.
      */
-    private void garantirIntervalo(Long lojaId, LocalDate data, LocalTime hora, Long ignorar) {
-        agenda.ativosDoDia(lojaId, data).stream()
+    private void garantirIntervalo(Loja loja, LocalDate data, LocalTime hora, Long ignorar) {
+        int intervaloMinutos = loja.getIntervaloAgendaMinutos();
+        agenda.ativosDoDia(loja.getId(), data).stream()
                 .filter(o -> !Objects.equals(o.getId(), ignorar))
                 .filter(o -> Math.abs(Duration.between(o.getHora(), hora).toMinutes()) < intervaloMinutos)
                 .findFirst()

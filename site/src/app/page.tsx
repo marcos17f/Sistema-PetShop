@@ -1,15 +1,17 @@
 import Link from "next/link";
 import { Marca } from "@/components/Pata";
 import { linkWhatsapp, loja } from "@/lib/loja";
+import { carregarLoja } from "@/lib/lojaPublica";
 
-/** Site público da loja (simples: o foco é levar ao WhatsApp e aparecer no Google). */
-export default function Site() {
-  const whats = loja.whatsapp ? linkWhatsapp(loja.whatsapp, "Olá! Quero agendar um horário.") : "#contato";
+/** Site público da loja (simples: o foco é levar ao WhatsApp e aparecer no Google). Dados vêm da tela Configurações. */
+export default async function Site() {
+  const c = await carregarLoja();
+  const whats = c.whatsapp ? linkWhatsapp(c.whatsapp, "Olá! Quero agendar um horário.") : "#contato";
   return (
     <>
       <header className="bg-verde-escuro text-menta">
         <div className="mx-auto flex max-w-[1100px] flex-wrap items-center justify-between gap-4 px-6 py-5">
-          <Marca subtitulo="Banho, tosa e vacinas" />
+          <Marca nome={c.nome} subtitulo="Banho, tosa e vacinas" />
           <nav className="flex flex-wrap items-center gap-5 text-sm font-semibold">
             <a href="#servicos" className="text-menta no-underline">Serviços</a>
             <a href="#contato" className="text-menta no-underline">Contato</a>
@@ -50,17 +52,25 @@ export default function Site() {
           <div className="mx-auto grid max-w-[1100px] grid-cols-[repeat(auto-fit,minmax(260px,1fr))] gap-6 px-6 py-16">
             <div className="flex flex-col gap-2">
               <h2 className="m-0 text-3xl font-extrabold">Onde estamos</h2>
-              <p className="m-0 text-muted">{loja.endereco}, {loja.cidade}</p>
-              <p className="m-0 text-muted">{loja.horario}</p>
+              <p className="m-0 text-muted">{[c.endereco, c.cidade].filter(Boolean).join(", ")}</p>
+              <p className="m-0 text-muted">{c.horarioTexto}</p>
+              {c.instagram && (
+                <a href={`https://instagram.com/${c.instagram}`} target="_blank" rel="noopener noreferrer" className="font-semibold text-verde">
+                  @{c.instagram} no Instagram
+                </a>
+              )}
             </div>
             <div className="flex flex-col items-start gap-3">
               <a href={whats} className="btn btn-verde">Chamar no WhatsApp</a>
+              {c.linkAvaliacao && (
+                <a href={c.linkAvaliacao} target="_blank" rel="noopener noreferrer" className="btn btn-claro">Avalie no Google</a>
+              )}
               <p className="m-0 text-sm text-muted">Depois do atendimento, sua avaliação no Google ajuda muito a loja.</p>
             </div>
           </div>
         </section>
       </main>
-      <footer className="py-8 text-center text-sm text-muted">© {new Date().getFullYear()} {loja.nome} · Site por MarcosLab</footer>
+      <footer className="py-8 text-center text-sm text-muted">© {new Date().getFullYear()} {c.nome} · Site por MarcosLab</footer>
     </>
   );
 }

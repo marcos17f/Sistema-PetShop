@@ -1,18 +1,28 @@
+import type { ConfigLoja } from "./tipos";
+
 /**
- * Dados da loja. VALORES DE EXEMPLO (fictícios): trocar pelos reais do Cleiton antes de publicar.
- * O WhatsApp de exemplo não existe; os botões abrem o WhatsApp, mas a mensagem não chega a ninguém.
+ * Nome, contato, horários e links agora são editados no painel (tela Configurações) e lidos da API.
+ * Os valores abaixo são de EXEMPLO (fictícios) e só valem no modo demonstração ou se a API estiver fora do ar.
+ * O WhatsApp de exemplo não existe: os botões abrem o WhatsApp, mas a mensagem não chega a ninguém.
  */
-export const loja = {
-  slug: process.env.NEXT_PUBLIC_LOJA_SLUG ?? "petshop-cleiton",
+export const configExemplo: ConfigLoja = {
   nome: "Pet Shop do Cleiton",
+  whatsapp: "62999990000",
   cidade: "Goiânia – GO",
   endereco: "Rua Exemplo, 123 · Centro",
-  horario: "Segunda a sexta, 8h às 18h · Sábado, 8h às 12h",
-  /** Só números, com 55 + DDD. */
-  whatsapp: "5562999990000",
+  horarioTexto: "Segunda a sexta, 8h às 18h · Sábado, 8h às 12h",
   instagram: "petshopdocleiton",
-  /** Minutos mínimos entre um atendimento e outro; manter igual a AGENDA_INTERVALO_MINUTOS da API. */
+  linkAvaliacao: "",
   intervaloAgendaMinutos: 40,
+  abre: "08:00",
+  fecha: "18:00",
+  sabadoAbre: "08:00",
+  sabadoFecha: "12:00",
+};
+
+export const loja = {
+  slug: process.env.NEXT_PUBLIC_LOJA_SLUG ?? "petshop-cleiton",
+  nome: configExemplo.nome,
   servicos: [
     { nome: "Banho", texto: "Banho com produtos adequados a cada tipo de pelo." },
     { nome: "Tosa", texto: "Tosa higiênica e tosa completa." },

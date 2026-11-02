@@ -12,14 +12,14 @@ export function Pata({ tamanho = 22, cor = "#0e3b35" }: { tamanho?: number; cor?
   );
 }
 
-export function Marca({ subtitulo }: { subtitulo?: string }) {
+export function Marca({ subtitulo, nome = loja.nome }: { subtitulo?: string; nome?: string }) {
   return (
     <span className="flex items-center gap-3">
       <span className="inline-flex size-10 items-center justify-center rounded-xl bg-caramelo">
         <Pata />
       </span>
       <span className="flex flex-col leading-tight">
-        <span className="text-base font-extrabold">{loja.nome}</span>
+        <span className="text-base font-extrabold">{nome}</span>
         {subtitulo && <span className="text-xs opacity-75">{subtitulo}</span>}
       </span>
     </span>

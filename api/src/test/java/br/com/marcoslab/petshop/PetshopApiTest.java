@@ -385,4 +385,44 @@ class PetshopApiTest {
         mvc.perform(get(BASE + "/tutores").with(doIp.apply("10.0.0.8")).with(httpBasic("loja", "senha-teste")))
                 .andExpect(status().isOk());
     }
+
+    @Test
+    void configuracoesDaLojaValemNoSitePublicoENaAgenda() throws Exception {
+        String config = """
+                {"nome":"Pet Shop Bom Pelo","whatsapp":"(62) 3333-4444","cidade":"Goiânia – GO","endereco":"Av. T-63, 100",
+                 "horarioTexto":"Seg a sex, 7h às 17h","instagram":"bompelo","linkAvaliacao":"https://g.page/r/abc/review",
+                 "intervaloAgendaMinutos":30,"abre":"07:00","fecha":"17:00","sabadoAbre":null,"sabadoFecha":null}
+                """;
+        mvc.perform(logado(put(BASE + "/config")).content(config))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.whatsapp").value("6233334444"))
+                .andExpect(jsonPath("$.sabadoAbre").value(nullValue()));
+
+        // o site público lê sem login (e só dados da loja)
+        mvc.perform(get("/api/publico/lojas/petshop-cleiton"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.nome").value("Pet Shop Bom Pelo"))
+                .andExpect(jsonPath("$.abre").value("07:00"))
+                .andExpect(jsonPath("$.linkAvaliacao").value("https://g.page/r/abc/review"));
+        // configurações só com login; público é só leitura
+        mvc.perform(get(BASE + "/config")).andExpect(status().isUnauthorized());
+        mvc.perform(put("/api/publico/lojas/petshop-cleiton").contentType(MediaType.APPLICATION_JSON).content(config))
+                .andExpect(status().isUnauthorized());
+
+        // validações
+        mvc.perform(logado(put(BASE + "/config")).content(config.replace("\"fecha\":\"17:00\"", "\"fecha\":\"06:00\"")))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.campos.horarioValido").value("O horário de fechar precisa ser depois do de abrir"));
+        mvc.perform(logado(put(BASE + "/config")).content(config.replace("https://g.page", "http://g.page")))
+                .andExpect(jsonPath("$.campos.linkAvaliacao").value("O link precisa começar com https://"));
+
+        // o intervalo novo (30 min) já vale na agenda
+        long thor = novoTutorComPet();
+        criar("/agenda", """
+                {"petId":%d,"data":"2026-03-02","hora":"09:00","tipo":"BANHO"}
+                """.formatted(thor));
+        criar("/agenda", """
+                {"petId":%d,"data":"2026-03-02","hora":"09:30","tipo":"TOSA"}
+                """.formatted(thor));
+    }
 }

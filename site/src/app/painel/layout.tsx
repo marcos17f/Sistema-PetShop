@@ -4,13 +4,14 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Marca } from "@/components/Pata";
-import { estaLogado, modoDemonstracao, sair } from "@/lib/api";
+import { buscarConfig, estaLogado, modoDemonstracao, sair } from "@/lib/api";
 
 const menu = [
   { href: "/painel", texto: "Agenda" },
   { href: "/painel/clientes", texto: "Clientes e pets" },
   { href: "/painel/lembretes", texto: "Lembretes no WhatsApp" },
   { href: "/painel/financeiro", texto: "Financeiro" },
+  { href: "/painel/configuracoes", texto: "Configurações" },
 ];
 
 /** Moldura do painel: menu lateral + guarda de login (como um AuthGuard no Angular). */
@@ -18,10 +19,14 @@ export default function PainelLayout({ children }: { children: React.ReactNode }
   const caminho = usePathname();
   const router = useRouter();
   const [pronto, setPronto] = useState(false);
+  const [nomeLoja, setNomeLoja] = useState<string | undefined>();
 
   useEffect(() => {
     if (!estaLogado()) router.replace("/login");
-    else setPronto(true);
+    else {
+      setPronto(true);
+      buscarConfig().then((c) => setNomeLoja(c.nome)).catch(() => undefined); // sem nome novo: fica o padrão
+    }
   }, [router]);
 
   if (!pronto) return null;
@@ -29,7 +34,7 @@ export default function PainelLayout({ children }: { children: React.ReactNode }
   return (
     <div className="flex min-h-screen flex-wrap">
       <aside className="flex max-w-full flex-[1_1_220px] flex-col gap-7 bg-verde-escuro px-5 py-7 text-menta">
-        <Marca subtitulo="Painel da loja" />
+        <Marca nome={nomeLoja} subtitulo="Painel da loja" />
         <nav aria-label="Menu do painel" className="flex flex-col gap-1 text-[15px] font-semibold">
           {menu.map((m) => {
             const ativo = m.href === "/painel" ? caminho === "/painel" : caminho.startsWith(m.href);

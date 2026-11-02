@@ -12,7 +12,7 @@
  * e a planilha não leva nome nem contato do tutor, só o serviço e o pet.
  */
 import { formatar, hoje, nomeMes } from "./datas";
-import { loja } from "./loja";
+import { buscarConfig } from "./api";
 import { NOMES_SERVICO, type Agendamento, type Lancamento, type Resumo } from "./tipos";
 
 const MOEDA = '"R$" #,##0.00;[Red]-"R$" #,##0.00';
@@ -31,6 +31,7 @@ type Linha = [string, string, string, number];
 
 export async function exportarMes(resumo: Resumo, lancamentos: Lancamento[], atendimentos: Agendamento[]) {
   const { default: writeXlsxFile } = await import("write-excel-file/browser");
+  const { nome: nomeLoja } = await buscarConfig();
   const { atual, anterior, ultimosMeses } = resumo;
 
   /* ---------- estilos ---------- */
@@ -113,7 +114,7 @@ export async function exportarMes(resumo: Resumo, lancamentos: Lancamento[], ate
     columns: [{ width: 30 }, { width: 18 }, { width: 18 }, { width: 18 }, { width: 26 }],
     showGridLines: false,
     data: [
-      [titulo(`${loja.nome} · Financeiro de ${nomeMes(atual.mes).toLowerCase()}`, 5), null, null, null, null],
+      [titulo(`${nomeLoja} · Financeiro de ${nomeMes(atual.mes).toLowerCase()}`, 5), null, null, null, null],
       [nota(`Gerado em ${formatar(hoje(), true)} · valores em reais · as outras abas trazem cada lançamento`, 5), null, null, null, null],
       [null],
       [secao("Resumo do mês", 4), null, null, null],

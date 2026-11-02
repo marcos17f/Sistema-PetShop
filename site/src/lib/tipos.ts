@@ -152,3 +152,19 @@ export type RegistroHistorico = {
   antes: string | null;
   depois: string | null;
 };
+
+/** Configurações da loja (tela Configurações); o site público lê as mesmas. Horas em HH:mm; sábado null = fechado. */
+export type ConfigLoja = {
+  nome: string;
+  whatsapp: string;
+  cidade: string;
+  endereco: string;
+  horarioTexto: string;
+  instagram: string;
+  linkAvaliacao: string;
+  intervaloAgendaMinutos: number;
+  abre: string;
+  fecha: string;
+  sabadoAbre: string | null;
+  sabadoFecha: string | null;
+};

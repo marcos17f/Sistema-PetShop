@@ -9,7 +9,7 @@ import {
 import { hoje, somarMeses } from "./datas";
 import { podeRepetir } from "./tipos";
 import type {
-  AplicacaoVacina, Agendamento, Categoria, Lancamento, Lembrete, Pet, PrecoServico, RegistroHistorico, Resumo, StatusAgendamento, TipoLancamento,
+  AplicacaoVacina, Agendamento, Categoria, ConfigLoja, Lancamento, Lembrete, Pet, PrecoServico, RegistroHistorico, Resumo, StatusAgendamento, TipoLancamento,
   TipoServico, Tutor,
 } from "./tipos";
 
@@ -244,14 +244,14 @@ export async function excluirAgendamento(id: number): Promise<void> {
   db.agendamentos = db.agendamentos.filter((x) => x.id !== id);
 }
 
-/** Mesma regra da API: pelo menos loja.intervaloAgendaMinutos entre um atendimento e outro, de qualquer cliente. */
+/** Mesma regra da API: pelo menos o intervalo da loja (tela Configurações) entre um atendimento e outro, de qualquer cliente. */
 function garantirIntervalo(data: string, hora: string, ignorar: number | null) {
   const minutos = (h: string) => Number(h.slice(0, 2)) * 60 + Number(h.slice(3, 5));
   const perto = db.agendamentos.find(
-    (x) => x.id !== ignorar && x.data === data && x.status !== "CANCELADO" && Math.abs(minutos(x.hora) - minutos(hora)) < loja.intervaloAgendaMinutos,
+    (x) => x.id !== ignorar && x.data === data && x.status !== "CANCELADO" && Math.abs(minutos(x.hora) - minutos(hora)) < db.config.intervaloAgendaMinutos,
   );
   if (perto) {
-    throw new Error(`Muito perto do atendimento das ${perto.hora}. Deixe pelo menos ${loja.intervaloAgendaMinutos} minutos entre um atendimento e outro.`);
+    throw new Error(`Muito perto do atendimento das ${perto.hora}. Deixe pelo menos ${db.config.intervaloAgendaMinutos} minutos entre um atendimento e outro.`);
   }
 }
 
@@ -422,4 +422,24 @@ export async function definirPreco(tipo: TipoServico, valor: number): Promise<Pr
 export async function listarHistorico(): Promise<RegistroHistorico[]> {
   if (!modoDemonstracao) return chamar(`/financeiro/historico`);
   return db.historico.slice(0, 100);
+}
+
+/* ---------- configurações da loja ---------- */
+
+export async function buscarConfig(): Promise<ConfigLoja> {
+  if (!modoDemonstracao) return chamar(`/config`);
+  return { ...db.config };
+}
+
+export async function salvarConfig(c: ConfigLoja): Promise<ConfigLoja> {
+  if (!modoDemonstracao) return chamar(`/config`, { method: "PUT", body: JSON.stringify(c) });
+  // mesmas regras principais da API (demonstração)
+  if (c.fecha <= c.abre || (c.sabadoAbre && c.sabadoFecha && c.sabadoFecha <= c.sabadoAbre)) {
+    throw new Error("O horário de fechar precisa ser depois do de abrir");
+  }
+  if (c.intervaloAgendaMinutos < 10 || c.intervaloAgendaMinutos > 240) throw new Error("Use de 10 a 240 minutos");
+  if (c.linkAvaliacao && !c.linkAvaliacao.startsWith("https://")) throw new Error("O link precisa começar com https://");
+  registrar("ALTEROU", "configuracoes", 1, null, "configurações da loja");
+  db.config = { ...c, whatsapp: c.whatsapp.replace(/\D/g, ""), instagram: c.instagram.replace(/^@/, "") };
+  return { ...db.config };
 }

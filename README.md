@@ -56,7 +56,6 @@ Login do painel: usuário `loja`, senha `troque-esta-senha` (padrão de desenvol
 | `PAINEL_LOJA` | `petshop-cleiton` | Slug da loja que esse login acessa |
 | `CORS_ORIGENS` | `http://localhost:3000` | Endereço do site (separe vários por vírgula) |
 | `WHATSAPP_AUTOMATICO` | `false` | Liga o disparo automático às 18h |
-| `AGENDA_INTERVALO_MINUTOS` | `40` | Minutos mínimos entre um atendimento e outro (no site: `intervaloAgendaMinutos` em `site/src/lib/loja.ts`) |
 
 ## 3. Endpoints (todos com HTTP Basic)
 
@@ -73,9 +72,11 @@ Base: `/api/lojas/{slug}`
 | GET/POST | `/pets/{petId}/vacinas` | Carteira de vacinação |
 | PUT / DELETE | `/pets/{petId}/vacinas/{id}` | Corrige / apaga vacina registrada errado |
 | GET | `/agenda?data=yyyy-MM-dd` | Agenda do dia |
-| POST | `/agenda` | Novo agendamento. **Intervalo mínimo entre atendimentos** (padrão 40 min, de qualquer cliente); cancelado libera o horário |
+| POST | `/agenda` | Novo agendamento. **Intervalo mínimo entre atendimentos** (tela Configurações, padrão 40 min, de qualquer cliente); cancelado libera o horário |
 | PUT / DELETE | `/agenda/{id}` | Edita (pet, serviço, data, hora, detalhe) / exclui agendamento lançado por engano. Concluído não é editado nem excluído |
 | PATCH | `/agenda/{id}/status` | Muda status e, opcional, `valor` cobrado. Concluir sem valor usa o preço padrão do serviço. Banho concluído atualiza o "último banho" do pet |
+| GET / PUT | `/config` | Configurações da loja (nome, WhatsApp, endereço, horários, intervalo da agenda, Instagram, link de avaliação) |
+| GET | `/api/publico/lojas/{slug}` | **Sem login**: dados públicos da loja para o site (só leitura) |
 | GET | `/lembretes?data=` | Lembretes do dia (agendamentos, reforço de vacina, retorno de banho) |
 | POST | `/lembretes/enviados` | Marca lembrete como enviado |
 | GET/POST | `/financeiro/categorias` | Categorias de custo/receita (as padrão vêm na migration) |
@@ -148,14 +149,12 @@ despesas eventuais, atendimentos e **custo médio por atendimento** ((fixos + va
 
 ## Pendências antes de entregar
 
-- [ ] **Trocar os dados de exemplo (fictícios)** pelos reais do Cleiton: nome, WhatsApp, endereço, horários e Instagram em
-  `site/src/lib/loja.ts`; nome/WhatsApp da loja e preços dos serviços numa migration nova (`V7__...`), nunca editando a V3.
-- [ ] **Trocar o intervalo entre agendamentos** (hoje 40 min, provisório; combinar com o Cleiton, ex.: 30 min): variável
-  `AGENDA_INTERVALO_MINUTOS` na API **e** `intervaloAgendaMinutos` em `site/src/lib/loja.ts` (os dois com o mesmo valor).
+- [ ] **Preencher os dados reais da loja** na tela **Painel → Configurações** (nome, WhatsApp, cidade, endereço, horários,
+  Instagram, link de avaliação do Google). Hoje são de exemplo (fictícios).
+- [ ] **Combinar o intervalo entre agendamentos** com o Cleiton (hoje 40 min): também na tela Configurações.
 - [ ] Preços reais dos serviços (tela Financeiro → Preços dos serviços).
 - [ ] Gerar a senha forte do painel com bcrypt (comando na seção 6) e colocar em `PAINEL_SENHA` no servidor.
 - [ ] Agendar o `backup.sh` no cron do servidor e guardar cópia fora dele.
 - [ ] Fotos reais da loja no site (com autorização dos tutores que aparecerem).
-- [ ] Link das avaliações do Google (perfil da empresa) no site.
 - [ ] Trocar o JDK da IDE para o 21 (*File → Project Structure → SDK*).
 - [ ] Deixar o repositório do GitHub **privado** (*Settings → General → Danger Zone → Change visibility*).

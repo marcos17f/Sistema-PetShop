@@ -26,9 +26,6 @@ app:
     usuario: ${PAINEL_USUARIO:loja}
     senha: ${PAINEL_SENHA:{noop}troque-esta-senha}
     loja-slug: ${PAINEL_LOJA:petshop-cleiton}
-  agenda:
-    # Intervalo mínimo entre um atendimento e outro (de qualquer cliente)
-    intervalo-minutos: ${AGENDA_INTERVALO_MINUTOS:40}
   lembrete:
     cron: "0 0 18 * * *"
   whatsapp:

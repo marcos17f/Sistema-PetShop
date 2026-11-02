@@ -29,6 +29,12 @@ public class LojaService {
         return lojas.findBySlug(slug).orElseThrow(() -> new Erros.NaoEncontrado("Loja não encontrada"));
     }
 
+    /** Para as rotas públicas (site): qualquer loja existente, sem login. */
+    @Transactional(readOnly = true)
+    public Loja buscarPublica(String slug) {
+        return lojas.findBySlug(slug).orElseThrow(() -> new Erros.NaoEncontrado("Loja não encontrada"));
+    }
+
     /**
      * Grava agendamentos da loja um de cada vez (até o fim da transação), para dois salvamentos ao mesmo
      * tempo não passarem juntos pela conferência do intervalo entre horários.

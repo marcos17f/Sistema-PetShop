@@ -1,11 +1,14 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import { loja } from "@/lib/loja";
+import { carregarLoja } from "@/lib/lojaPublica";
 
-export const metadata: Metadata = {
-  title: { default: `${loja.nome} | Banho, tosa e vacinas`, template: `%s | ${loja.nome}` },
-  description: "Banho, tosa e vacinas com agendamento pelo WhatsApp e lembrete das próximas datas.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const c = await carregarLoja();
+  return {
+    title: { default: `${c.nome} | Banho, tosa e vacinas`, template: `%s | ${c.nome}` },
+    description: `Banho, tosa e vacinas${c.cidade ? ` em ${c.cidade}` : ""}, com agendamento pelo WhatsApp e lembrete das próximas datas.`,
+  };
+}
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
