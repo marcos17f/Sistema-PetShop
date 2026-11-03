@@ -4,11 +4,11 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { Fragment, useCallback, useEffect, useState } from "react";
 import { FormCliente } from "@/components/FormCliente";
-import { BotaoExcluir, Carregando, Erro } from "@/components/Ui";
-import { alterarPet, alterarTutor, promocoesCliente, alterarVacina, buscarTutor, criarPet, excluirPet, excluirTutor, excluirVacina, listarVacinas, registrarVacina, type NovaVacina, type NovoPet } from "@/lib/api";
+import { BotaoExcluir, Carregando, ChipStatus, Erro } from "@/components/Ui";
+import { alterarPet, alterarTutor, historicoCliente, promocoesCliente, alterarVacina, buscarTutor, criarPet, excluirPet, excluirTutor, excluirVacina, listarVacinas, registrarVacina, type NovaVacina, type NovoPet } from "@/lib/api";
 import { formatar, hoje, proximoBanho, situacaoVacina } from "@/lib/datas";
 import { linkWhatsapp } from "@/lib/loja";
-import type { AplicacaoVacina, Pet, Tutor } from "@/lib/tipos";
+import { NOMES_SERVICO, reais, type AplicacaoVacina, type HistoricoCliente, type Pet, type Tutor } from "@/lib/tipos";
 
 export default function FichaCliente() {
   const { id } = useParams<{ id: string }>();
@@ -139,6 +139,8 @@ export default function FichaCliente() {
           }}
         />
       )}
+
+      <HistoricoDoCliente tutorId={tutor.id} />
 
       {pet ? (
         <PainelPet
@@ -412,5 +414,51 @@ function NovaVacinaForm({ petId, editando, aoSalvar, aoCancelar }: {
       </div>
       <div className="col-span-full"><Erro texto={erro} /></div>
     </form>
+  );
+}
+
+/** Quanto o cliente já gastou e todos os atendimentos (todos os pets), do mais recente. */
+function HistoricoDoCliente({ tutorId }: { tutorId: number }) {
+  const [h, setH] = useState<HistoricoCliente | null>(null);
+  const [aberto, setAberto] = useState(false);
+
+  useEffect(() => {
+    historicoCliente(tutorId).then(setH).catch(() => setH(null));
+  }, [tutorId]);
+
+  if (!h) return null;
+  const cards = [
+    ["Total gasto", reais(h.totalGasto)],
+    ["Atendimentos concluídos", String(h.atendimentosConcluidos)],
+    ["Última visita", formatar(h.ultimoAtendimento, true)],
+  ];
+  return (
+    <section aria-label="Histórico de atendimentos" className="cartao flex flex-col gap-3 p-6">
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(170px,1fr))] gap-3">
+        {cards.map(([r, v]) => (
+          <div key={r} className="flex flex-col rounded-2xl bg-fundo p-4">
+            <span className="text-xs font-bold uppercase tracking-wider text-muted">{r}</span>
+            <span className="text-2xl font-extrabold">{v}</span>
+          </div>
+        ))}
+      </div>
+      {h.atendimentos.length > 0 && (
+        <button type="button" className="self-start text-sm font-bold text-verde underline" aria-expanded={aberto} onClick={() => setAberto((v) => !v)}>
+          {aberto ? "Esconder atendimentos" : `Ver os ${h.atendimentos.length} atendimento(s)`}
+        </button>
+      )}
+      {aberto && (
+        <ul className="m-0 flex max-h-96 list-none flex-col overflow-y-auto p-0">
+          {h.atendimentos.map((a) => (
+            <li key={a.id} className="flex flex-wrap items-center gap-x-4 gap-y-1 border-b border-linha py-2.5 last:border-0">
+              <span className="w-24 font-bold">{formatar(a.data, true)}</span>
+              <span className="min-w-0 flex-[1_1_180px]">{NOMES_SERVICO[a.tipo]} <span className="text-muted">· {a.petNome}</span></span>
+              <ChipStatus status={a.status} />
+              <span className="w-24 text-right font-bold">{a.status === "CONCLUIDO" ? reais(a.valor) : ""}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   );
 }

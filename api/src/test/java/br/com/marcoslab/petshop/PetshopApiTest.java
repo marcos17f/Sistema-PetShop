@@ -425,4 +425,27 @@ class PetshopApiTest {
                 {"petId":%d,"data":"2026-03-02","hora":"09:30","tipo":"TOSA"}
                 """.formatted(thor));
     }
+
+    @Test
+    void fichaMostraHistoricoEValorGastoDoCliente() throws Exception {
+        long thor = novoTutorComPet();
+        long tutor = tutorDoPet(thor);
+        long mel = criar("/tutores/" + tutor + "/pets", "{\"nome\":\"Mel\",\"especie\":\"Gato\"}").get("id").asLong();
+        String ag = "{\"petId\":%d,\"data\":\"%s\",\"hora\":\"%s\",\"tipo\":\"%s\"}";
+        long a1 = criar("/agenda", ag.formatted(thor, "2026-02-10", "09:00", "BANHO")).get("id").asLong();
+        long a2 = criar("/agenda", ag.formatted(mel, "2026-03-05", "10:00", "TOSA")).get("id").asLong();
+        criar("/agenda", ag.formatted(thor, "2026-12-01", "09:00", "BANHO")); // futuro, aguardando: não soma
+        mvc.perform(logado(patch(BASE + "/agenda/" + a1 + "/status")).content("{\"status\":\"CONCLUIDO\"}")); // preço padrão 50
+        mvc.perform(logado(patch(BASE + "/agenda/" + a2 + "/status")).content("{\"status\":\"CONCLUIDO\",\"valor\":70.50}"));
+
+        mvc.perform(logado(get(BASE + "/agenda/cliente/" + tutor)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalGasto").value(120.50))
+                .andExpect(jsonPath("$.atendimentosConcluidos").value(2))
+                .andExpect(jsonPath("$.ultimoAtendimento").value("2026-03-05"))
+                .andExpect(jsonPath("$.atendimentos", hasSize(3)))
+                .andExpect(jsonPath("$.atendimentos[0].data").value("2026-12-01"))
+                .andExpect(jsonPath("$.atendimentos[1].petNome").value("Mel"));
+        mvc.perform(logado(get(BASE + "/agenda/cliente/999"))).andExpect(status().isNotFound());
+    }
 }

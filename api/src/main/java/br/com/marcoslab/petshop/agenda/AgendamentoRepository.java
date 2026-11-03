@@ -66,4 +66,13 @@ public interface AgendamentoRepository extends JpaRepository<Agendamento, Long> 
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("delete from Agendamento a where a.pet.id = :petId")
     void apagarDoPet(@Param("petId") Long petId);
+
+    /** Histórico do cliente (todos os pets), do mais recente; limitado para a ficha não pesar. */
+    @Query("""
+            select a from Agendamento a join fetch a.pet p
+            where p.tutor.id = :tutorId and a.loja.id = :lojaId
+            order by a.data desc, a.hora desc
+            """)
+    List<Agendamento> doTutor(@Param("tutorId") Long tutorId, @Param("lojaId") Long lojaId,
+                              org.springframework.data.domain.Pageable limite);
 }

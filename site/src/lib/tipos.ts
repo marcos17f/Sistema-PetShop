@@ -255,3 +255,6 @@ export type Campanha = {
   criadaEm: string;
   envios: Record<StatusEnvio, number>;
 };
+
+/** Ficha do cliente: atendimentos (todos os pets) e quanto já gastou (só concluídos). */
+export type HistoricoCliente = { totalGasto: number; atendimentosConcluidos: number; ultimoAtendimento: string | null; atendimentos: Agendamento[] };

@@ -9,7 +9,7 @@ import {
 import { hoje, somarDias, somarMeses } from "./datas";
 import { podeRepetir } from "./tipos";
 import type {
-  AplicacaoVacina, Agendamento, Aviso, Campanha, ConfirmacaoOnline, PedidoOnline, ServicoPublico, Categoria, ConfigLoja, MensagemWhatsApp, ResultadoEnvio, SituacaoWhatsApp, TipoMensagem, Lancamento, Lembrete, Pet, PrecoServico, RegistroHistorico, Resumo, StatusAgendamento, TipoLancamento,
+  AplicacaoVacina, Agendamento, Aviso, Campanha, HistoricoCliente, ConfirmacaoOnline, PedidoOnline, ServicoPublico, Categoria, ConfigLoja, MensagemWhatsApp, ResultadoEnvio, SituacaoWhatsApp, TipoMensagem, Lancamento, Lembrete, Pet, PrecoServico, RegistroHistorico, Resumo, StatusAgendamento, TipoLancamento,
   TipoServico, Tutor,
 } from "./tipos";
 
@@ -645,4 +645,23 @@ function pedirAvaliacaoDemo(petId: number) {
   const noventaDias = Date.now() - 90 * 86_400_000;
   if (db.mensagens.some((m) => m.tipo === "AVALIACAO" && m.para.endsWith(para) && Date.parse(m.criadoEm) > noventaDias)) return;
   simular(t.whatsapp, "AVALIACAO", `Olá, ${t.nome.split(" ")[0]}! Obrigado por trazer o ${pet.nome} à ${db.config.nome}. Se puder, avalie nosso atendimento no Google: ${link}`);
+}
+
+/* ---------- histórico do cliente ---------- */
+
+export async function historicoCliente(tutorId: number): Promise<HistoricoCliente> {
+  if (!modoDemonstracao) return chamar(`/agenda/cliente/${tutorId}`);
+  const pets = db.pets.filter((p) => p.tutorId === tutorId).map((p) => p.id);
+  const lista = db.agendamentos
+    .filter((a) => pets.includes(a.petId))
+    .sort((a, b) => (b.data + b.hora).localeCompare(a.data + a.hora))
+    .slice(0, 200)
+    .map(comNomes);
+  const concluidos = lista.filter((a) => a.status === "CONCLUIDO");
+  return {
+    totalGasto: concluidos.reduce((t, a) => t + Math.round((a.valor ?? 0) * 100), 0) / 100,
+    atendimentosConcluidos: concluidos.length,
+    ultimoAtendimento: concluidos[0]?.data ?? null,
+    atendimentos: lista,
+  };
 }

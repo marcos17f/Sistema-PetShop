@@ -229,7 +229,19 @@ sempre dizendo o que fazer:
 (ou similar) para receber e-mail/WhatsApp se o sistema cair. A rota responde só `{"status":"UP"}` (sem detalhes); o resto
 do actuator fica bloqueado.
 
-## 10. Publicar (opção gratuita)
+## 10. App instalável (área de trabalho e celular)
+
+O sistema é um **PWA**: com o site publicado (HTTPS), no Chrome ou Edge aparece **Instalar aplicativo** (ícone na barra
+de endereço ou menu ⋮ → *Instalar*). Vira um ícone na área de trabalho/barra de tarefas e no celular (Android: *Adicionar
+à tela inicial*; iPhone: Safari → Compartilhar → *Adicionar à Tela de Início*) e abre direto no painel, em janela própria.
+Atualiza sozinho junto com o site.
+
+- **Segurança/LGPD:** o service worker (`public/sw.js`) **não guarda** páginas, respostas da API nem dados de clientes no
+  aparelho; só a página "sem internet" (`public/offline.html`). Os dados ficam no servidor, com backup.
+- Ícone: `public/icone.svg` (e os PNG 192/512 gerados dele). Nome do app: o da tela Configurações.
+- No `npm run dev` o service worker não é registrado (só no site publicado).
+
+## 11. Publicar (opção gratuita)
 
 - Site: Cloudflare Pages (`npm run build`), com `NEXT_PUBLIC_API_URL` apontando para a API.
 - API + banco: Oracle Cloud Always Free (VM com Docker). Use o `Dockerfile` da pasta `api`.

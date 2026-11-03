@@ -90,6 +90,23 @@ public class AgendaController {
         this.agenda = agenda;
     }
 
+    public record Historico(java.math.BigDecimal totalGasto, long atendimentosConcluidos, LocalDate ultimoAtendimento,
+                            List<AgendamentoDto> atendimentos) {
+    }
+
+    /** Ficha do cliente: últimos 200 atendimentos de todos os pets e quanto ele já gastou (só concluídos). */
+    @GetMapping("/cliente/{tutorId}")
+    @Transactional(readOnly = true)
+    public Historico historicoDoCliente(@PathVariable String slug, @PathVariable Long tutorId) {
+        Loja loja = lojas.buscar(slug);
+        clientes.buscar(loja, tutorId); // 404 se não for cliente desta loja
+        List<Agendamento> lista = agenda.doTutor(tutorId, loja.getId(), org.springframework.data.domain.PageRequest.of(0, 200));
+        List<Agendamento> concluidos = lista.stream().filter(a -> a.getStatus() == StatusAgendamento.CONCLUIDO).toList();
+        BigDecimal total = concluidos.stream().map(Agendamento::getValor).filter(v -> v != null).reduce(BigDecimal.ZERO, BigDecimal::add);
+        return new Historico(total, concluidos.size(), concluidos.isEmpty() ? null : concluidos.get(0).getData(),
+                lista.stream().map(AgendamentoDto::de).toList());
+    }
+
     @GetMapping
     @Transactional(readOnly = true)
     public List<AgendamentoDto> doDia(@PathVariable String slug,

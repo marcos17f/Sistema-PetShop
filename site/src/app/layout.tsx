@@ -1,11 +1,14 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { RegistrarApp } from "@/components/RegistrarApp";
 import { carregarLoja } from "@/lib/lojaPublica";
 
 export async function generateMetadata(): Promise<Metadata> {
   const c = await carregarLoja();
   return {
     title: { default: `${c.nome} | Banho, tosa e vacinas`, template: `%s | ${c.nome}` },
+    icons: { icon: "/icone.svg", apple: "/icone-192.png" },
+    appleWebApp: { capable: true, title: c.nome, statusBarStyle: "default" },
     description: `Banho, tosa e vacinas${c.cidade ? ` em ${c.cidade}` : ""}, com agendamento pelo WhatsApp e lembrete das próximas datas.`,
   };
 }
@@ -18,7 +21,10 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
         <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" />
       </head>
-      <body className="antialiased">{children}</body>
+      <body className="antialiased">
+        <RegistrarApp />
+        {children}
+      </body>
     </html>
   );
 }

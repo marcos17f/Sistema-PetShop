@@ -11,7 +11,11 @@ const seguranca = [
 const nextConfig: NextConfig = {
   poweredByHeader: false,
   async headers() {
-    return [{ source: "/:path*", headers: seguranca }];
+    return [
+      { source: "/:path*", headers: seguranca },
+      // o navegador sempre confere se há versão nova do service worker
+      { source: "/sw.js", headers: [{ key: "Cache-Control", value: "no-cache" }, { key: "Service-Worker-Allowed", value: "/" }] },
+    ];
   },
 };
 
