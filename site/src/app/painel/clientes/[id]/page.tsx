@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { Fragment, useCallback, useEffect, useState } from "react";
 import { FormCliente } from "@/components/FormCliente";
 import { BotaoExcluir, Carregando, ChipStatus, Erro } from "@/components/Ui";
-import { alterarPet, alterarTutor, historicoCliente, promocoesCliente, alterarVacina, buscarTutor, criarPet, excluirPet, excluirTutor, excluirVacina, listarVacinas, registrarVacina, type NovaVacina, type NovoPet } from "@/lib/api";
+import { alterarPet, alterarTutor, historicoCliente, promocoesCliente, quemSouEu, alterarVacina, buscarTutor, criarPet, excluirPet, excluirTutor, excluirVacina, listarVacinas, registrarVacina, type NovaVacina, type NovoPet } from "@/lib/api";
 import { formatar, hoje, proximoBanho, situacaoVacina } from "@/lib/datas";
 import { linkWhatsapp } from "@/lib/loja";
 import { NOMES_SERVICO, reais, type AplicacaoVacina, type HistoricoCliente, type Pet, type Tutor } from "@/lib/tipos";
@@ -17,7 +17,12 @@ export default function FichaCliente() {
   const [erro, setErro] = useState<string | null>(null);
   const [novoPet, setNovoPet] = useState(false);
   const [editando, setEditando] = useState(false);
+  const [ehDono, setEhDono] = useState(false);
   const router = useRouter();
+
+  useEffect(() => {
+    quemSouEu().then((e) => setEhDono(e.papel === "DONO")).catch(() => setEhDono(false));
+  }, []);
 
   const carregar = useCallback(async () => {
     try {
@@ -67,17 +72,20 @@ export default function FichaCliente() {
             }}>
             {tutor.promocoesDesde ? "Tirar das promoções" : "Aceitou promoções"}
           </button>
-          <BotaoExcluir
-            pergunta={`Excluir ${tutor.nome}? Cadastro por engano é apagado; se já pagou atendimentos, os valores ficam no financeiro sem o nome.`}
-            aoConfirmar={async () => {
-              try {
-                await excluirTutor(tutor.id);
-                router.replace("/painel/clientes");
-              } catch (e) {
-                setErro((e as Error).message);
-              }
-            }}
-          />
+          {/* excluir cliente é só do dono (LGPD: evita apagar alguém por engano) */}
+          {ehDono && (
+            <BotaoExcluir
+              pergunta={`Excluir ${tutor.nome}? Cadastro por engano é apagado; se já pagou atendimentos, os valores ficam no financeiro sem o nome.`}
+              aoConfirmar={async () => {
+                try {
+                  await excluirTutor(tutor.id);
+                  router.replace("/painel/clientes");
+                } catch (e) {
+                  setErro((e as Error).message);
+                }
+              }}
+            />
+          )}
         </div>
         <dl className="m-0 grid flex-[1_1_100%] grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-3 border-t border-linha pt-4">
           {[

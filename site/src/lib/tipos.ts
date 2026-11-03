@@ -258,3 +258,13 @@ export type Campanha = {
 
 /** Ficha do cliente: atendimentos (todos os pets) e quanto já gastou (só concluídos). */
 export type HistoricoCliente = { totalGasto: number; atendimentosConcluidos: number; ultimoAtendimento: string | null; atendimentos: Agendamento[] };
+
+/* ---------- usuários do painel ---------- */
+
+/** DONO vê tudo; FUNCIONARIO usa agenda, clientes, pets, vacinas e lembretes. */
+export type Papel = "DONO" | "FUNCIONARIO";
+
+/** Quem está logado. contaPrincipal = a conta do servidor (dono e recuperação). */
+export type Eu = { login: string; nome: string; papel: Papel; contaPrincipal: boolean };
+
+export type UsuarioPainel = { id: number; nome: string; login: string; papel: Papel; ativo: boolean };

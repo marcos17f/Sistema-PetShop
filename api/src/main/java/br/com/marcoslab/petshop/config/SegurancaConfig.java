@@ -7,11 +7,8 @@ import org.springframework.http.HttpMethod;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.security.core.userdetails.User;
-import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.factory.PasswordEncoderFactories;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.www.BasicAuthenticationFilter;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
@@ -24,8 +21,8 @@ import java.time.ZoneId;
 import java.util.List;
 
 /**
- * Login simples do painel (HTTP Basic, sem sessão) com um usuário configurado por variável de ambiente.
- * Suficiente para uma loja; para várias lojas com vários usuários, trocar por tabela de usuários + JWT.
+ * Login do painel (HTTP Basic, sem sessão): conta principal do servidor + usuários cadastrados (ver ContasDoPainel).
+ * DONO vê tudo; FUNCIONARIO usa agenda, clientes, pets, vacinas e lembretes.
  */
 @Configuration
 public class SegurancaConfig {
@@ -45,6 +42,14 @@ public class SegurancaConfig {
                         // agendamento online (cliente final) e webhook do WhatsApp: sem login, com as próprias proteções
                         .requestMatchers(HttpMethod.POST, "/api/publico/lojas/*/agendamentos", "/api/publico/whatsapp/webhook",
                                 "/api/publico/descadastro").permitAll()
+                        // só o dono: dinheiro, campanhas, configurações, usuários, saúde e excluir cliente (LGPD)
+                        .requestMatchers("/api/lojas/*/financeiro/**", "/api/lojas/*/precos/**", "/api/lojas/*/precos",
+                                "/api/lojas/*/campanhas/**", "/api/lojas/*/campanhas", "/api/lojas/*/avisos").hasRole("DONO")
+                        .requestMatchers(HttpMethod.PUT, "/api/lojas/*/config", "/api/lojas/*/whatsapp").hasRole("DONO")
+                        .requestMatchers(HttpMethod.DELETE, "/api/lojas/*/tutores/*").hasRole("DONO")
+                        .requestMatchers(HttpMethod.GET, "/api/lojas/*/usuarios/eu").authenticated()
+                        .requestMatchers(HttpMethod.PUT, "/api/lojas/*/usuarios/eu/senha").authenticated()
+                        .requestMatchers("/api/lojas/*/usuarios/**", "/api/lojas/*/usuarios").hasRole("DONO")
                         .requestMatchers("/api/**").authenticated()
                         .anyRequest().denyAll())
                 // 401 sem o cabeçalho WWW-Authenticate, para o navegador não abrir a janela nativa de login
@@ -63,12 +68,6 @@ public class SegurancaConfig {
     @Bean
     public PasswordEncoder passwordEncoder() {
         return PasswordEncoderFactories.createDelegatingPasswordEncoder();
-    }
-
-    @Bean
-    public UserDetailsService usuarios(@Value("${app.painel.usuario}") String usuario,
-                                       @Value("${app.painel.senha}") String senha) {
-        return new InMemoryUserDetailsManager(User.withUsername(usuario).password(senha).roles("LOJA").build());
     }
 
     @Bean

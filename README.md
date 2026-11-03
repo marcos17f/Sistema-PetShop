@@ -87,6 +87,9 @@ Base: `/api/lojas/{slug}`
 | POST | `/agenda` | Novo agendamento. **Intervalo mínimo entre atendimentos** (tela Configurações, padrão 40 min, de qualquer cliente); cancelado libera o horário |
 | PUT / DELETE | `/agenda/{id}` | Edita (pet, serviço, data, hora, detalhe) / exclui agendamento lançado por engano. Concluído não é editado nem excluído |
 | PATCH | `/agenda/{id}/status` | Muda status e, opcional, `valor` cobrado. Concluir sem valor usa o preço padrão do serviço. Banho concluído atualiza o "último banho" do pet |
+| GET | `/usuarios/eu` | Quem está logado e o papel (DONO ou FUNCIONARIO) |
+| GET / POST / PUT | `/usuarios`, `/usuarios/{id}`, `/usuarios/{id}/senha` | **Só dono**: cadastrar, ativar/desativar, mudar papel e redefinir senha |
+| PUT | `/usuarios/eu/senha` | Cada um troca a própria senha (precisa da atual) |
 | GET / PUT | `/config` | Configurações da loja (nome, WhatsApp, endereço, horários, intervalo da agenda, Instagram, link de avaliação) |
 | GET | `/api/publico/lojas/{slug}` | **Sem login**: dados públicos da loja para o site (só leitura) |
 | GET | `/api/publico/lojas/{slug}/servicos` e `/horarios?data=` | **Sem login**: serviços com preço e horários livres do dia |
@@ -196,6 +199,12 @@ despesas eventuais, atendimentos e **custo médio por atendimento** ((fixos + va
 - **LGPD:** o histórico e o Excel não guardam nome, telefone nem CPF de cliente; CPF continua opcional.
 - **Validação na API:** valores > 0 com no máximo 2 casas, datas entre 2000 e 2100, textos com tamanho máximo.
   Gravações simultâneas que colidem respondem 409 com mensagem clara (sem detalhes do banco).
+- **Logins por pessoa (Painel → Usuários):** cada pessoa com seu login; o histórico mostra quem fez cada alteração.
+  **Dono** vê tudo. **Funcionário** usa agenda, clientes, pets, vacinas e lembretes, mas a API bloqueia (403) financeiro,
+  preços, campanhas, configurações, preferências do WhatsApp, usuários, avisos e excluir cliente. Senhas só como bcrypt
+  (mín. 10 caracteres, sem conter o login). O dono redefine a senha de quem esqueceu; cada um troca a sua em *Minha senha*;
+  o dono não consegue desativar a própria conta. A **conta principal** (`PAINEL_USUARIO`/`PAINEL_SENHA`) continua sendo
+  dono e serve de recuperação; use-a só para emergências e crie um usuário para o dia a dia.
 - **Tentativas de login:** depois de 10 senhas erradas do mesmo endereço em 15 minutos, ele fica bloqueado por 15 minutos
   (resposta 429), mesmo acertando a senha. Configurável: `app.seguranca.max-tentativas` e `app.seguranca.bloqueio-minutos`.
   Atrás de proxy (Cloudflare/Nginx), ligue `server.forward-headers-strategy=native` para valer o IP do cliente.

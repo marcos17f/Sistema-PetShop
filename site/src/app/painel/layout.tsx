@@ -4,18 +4,20 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Marca } from "@/components/Pata";
-import { buscarConfig, estaLogado, listarAvisos, modoDemonstracao, sair } from "@/lib/api";
-import type { Aviso } from "@/lib/tipos";
+import { buscarConfig, estaLogado, listarAvisos, modoDemonstracao, quemSouEu, sair } from "@/lib/api";
+import type { Aviso, Eu } from "@/lib/tipos";
 
+/** soDono: o funcionário não vê (a API também bloqueia). */
 const menu = [
   { href: "/painel", texto: "Agenda" },
   { href: "/painel/clientes", texto: "Clientes e pets" },
   { href: "/painel/lembretes", texto: "Lembretes no WhatsApp" },
-  { href: "/painel/financeiro", texto: "Financeiro" },
+  { href: "/painel/financeiro", texto: "Financeiro", soDono: true },
   { href: "/painel/whatsapp", texto: "WhatsApp" },
-  { href: "/painel/campanhas", texto: "Campanhas" },
-  { href: "/painel/configuracoes", texto: "Configurações" },
-  { href: "/painel/saude", texto: "Saúde do sistema" },
+  { href: "/painel/campanhas", texto: "Campanhas", soDono: true },
+  { href: "/painel/configuracoes", texto: "Configurações", soDono: true },
+  { href: "/painel/usuarios", texto: "Usuários", soDono: true },
+  { href: "/painel/saude", texto: "Saúde do sistema", soDono: true },
 ];
 
 /** Moldura do painel: menu lateral + guarda de login (como um AuthGuard no Angular). */
@@ -25,23 +27,25 @@ export default function PainelLayout({ children }: { children: React.ReactNode }
   const [pronto, setPronto] = useState(false);
   const [nomeLoja, setNomeLoja] = useState<string | undefined>();
   const [avisos, setAvisos] = useState<Aviso[]>([]);
+  const [eu, setEu] = useState<Eu | null>(null);
 
   useEffect(() => {
     if (!estaLogado()) router.replace("/login");
     else {
       setPronto(true);
       buscarConfig().then((c) => setNomeLoja(c.nome)).catch(() => undefined); // sem nome novo: fica o padrão
+      quemSouEu().then(setEu).catch(() => undefined);
     }
   }, [router]);
 
   // avisos do sistema: ao trocar de tela e a cada 5 minutos
   useEffect(() => {
-    if (!pronto) return;
+    if (!pronto || eu?.papel !== "DONO") return; // avisos do sistema são para o dono
     const ler = () => listarAvisos().then(setAvisos).catch(() => undefined);
     ler();
     const t = setInterval(ler, 5 * 60_000);
     return () => clearInterval(t);
-  }, [pronto, caminho]);
+  }, [pronto, caminho, eu]);
 
   if (!pronto) return null;
   const importantes = avisos.filter((x) => x.nivel !== "INFO");
@@ -51,7 +55,7 @@ export default function PainelLayout({ children }: { children: React.ReactNode }
       <aside className="flex max-w-full flex-[1_1_220px] flex-col gap-7 bg-verde-escuro px-5 py-7 text-menta">
         <Marca nome={nomeLoja} subtitulo="Painel da loja" />
         <nav aria-label="Menu do painel" className="flex flex-col gap-1 text-[15px] font-semibold">
-          {menu.map((m) => {
+          {menu.filter((m) => !m.soDono || eu?.papel === "DONO").map((m) => {
             const ativo = m.href === "/painel" ? caminho === "/painel" : caminho.startsWith(m.href);
             return (
               <Link
@@ -67,6 +71,14 @@ export default function PainelLayout({ children }: { children: React.ReactNode }
         </nav>
         <div className="mt-auto flex flex-col gap-2 text-xs text-menta-2">
           {modoDemonstracao && <span>Modo demonstração: dados de exemplo</span>}
+          {eu && !modoDemonstracao && (
+            <span className="text-sm text-menta">
+              {eu.nome} · {eu.papel === "DONO" ? "dono" : "funcionário"}
+            </span>
+          )}
+          {!modoDemonstracao && (
+            <Link href="/painel/minha-senha" className="self-start text-sm font-semibold text-menta underline">Minha senha</Link>
+          )}
           {!modoDemonstracao && (
             <button
               type="button"

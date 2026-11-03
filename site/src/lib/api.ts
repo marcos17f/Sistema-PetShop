@@ -9,7 +9,7 @@ import {
 import { hoje, somarDias, somarMeses } from "./datas";
 import { podeRepetir } from "./tipos";
 import type {
-  AplicacaoVacina, Agendamento, Aviso, Campanha, HistoricoCliente, ConfirmacaoOnline, PedidoOnline, ServicoPublico, Categoria, ConfigLoja, MensagemWhatsApp, ResultadoEnvio, SituacaoWhatsApp, TipoMensagem, Lancamento, Lembrete, Pet, PrecoServico, RegistroHistorico, Resumo, StatusAgendamento, TipoLancamento,
+  AplicacaoVacina, Agendamento, Aviso, Campanha, Eu, UsuarioPainel, Papel, HistoricoCliente, ConfirmacaoOnline, PedidoOnline, ServicoPublico, Categoria, ConfigLoja, MensagemWhatsApp, ResultadoEnvio, SituacaoWhatsApp, TipoMensagem, Lancamento, Lembrete, Pet, PrecoServico, RegistroHistorico, Resumo, StatusAgendamento, TipoLancamento,
   TipoServico, Tutor,
 } from "./tipos";
 
@@ -42,6 +42,7 @@ export async function entrar(usuario: string, senha: string) {
 }
 
 export function sair() {
+  euCache = null;
   try {
     sessionStorage.removeItem(CHAVE_SESSAO);
   } catch {
@@ -59,6 +60,7 @@ async function chamar<T>(caminho: string, init: RequestInit = {}): Promise<T> {
     sair();
     throw new Error("Sessão expirada. Entre novamente.");
   }
+  if (res.status === 403) throw new Error("Seu usuário não tem permissão para isso. Peça ao dono da loja.");
   if (!res.ok) {
     const corpo = await res.json().catch(() => null);
     const campos = corpo?.campos ? Object.values(corpo.campos as Record<string, string>) : [];
@@ -664,4 +666,53 @@ export async function historicoCliente(tutorId: number): Promise<HistoricoClient
     ultimoAtendimento: concluidos[0]?.data ?? null,
     atendimentos: lista,
   };
+}
+
+/* ---------- usuários (logins por pessoa) ---------- */
+
+let euCache: Promise<Eu> | null = null;
+
+/** Quem está logado (guardado enquanto a aba estiver aberta; sair() limpa). Demonstração: sempre o dono. */
+export function quemSouEu(): Promise<Eu> {
+  if (modoDemonstracao) return Promise.resolve({ login: "demo", nome: "Demonstração", papel: "DONO", contaPrincipal: true });
+  if (!euCache) euCache = chamar<Eu>(`/usuarios/eu`).catch((e) => { euCache = null; throw e; });
+  return euCache;
+}
+
+const usuariosDemo: UsuarioPainel[] = [];
+
+export async function listarUsuarios(): Promise<UsuarioPainel[]> {
+  if (!modoDemonstracao) return chamar(`/usuarios`);
+  return usuariosDemo.map((u) => ({ ...u }));
+}
+
+export async function criarUsuario(nome: string, login: string, senha: string, papel: Papel): Promise<UsuarioPainel> {
+  if (!modoDemonstracao) return chamar(`/usuarios`, { method: "POST", body: JSON.stringify({ nome, login, senha, papel }) });
+  if (senha.length < 10) throw new Error("A senha precisa ter de 10 a 72 caracteres");
+  const l = login.trim().toLowerCase();
+  if (usuariosDemo.some((u) => u.login === l)) throw new Error("Esse login já existe. Escolha outro.");
+  const u = { id: novoId(), nome: nome.trim(), login: l, papel, ativo: true };
+  usuariosDemo.push(u);
+  return { ...u };
+}
+
+export async function alterarUsuario(id: number, nome: string, papel: Papel, ativo: boolean): Promise<UsuarioPainel> {
+  if (!modoDemonstracao) return chamar(`/usuarios/${id}`, { method: "PUT", body: JSON.stringify({ nome, papel, ativo }) });
+  const u = usuariosDemo.find((x) => x.id === id)!;
+  Object.assign(u, { nome, papel, ativo });
+  return { ...u };
+}
+
+/** O dono redefine a senha de quem esqueceu. */
+export async function redefinirSenha(id: number, senha: string): Promise<void> {
+  if (!modoDemonstracao) return chamar(`/usuarios/${id}/senha`, { method: "PUT", body: JSON.stringify({ senha }) });
+  if (senha.length < 10) throw new Error("A senha precisa ter de 10 a 72 caracteres");
+}
+
+/** Troca a própria senha; o login guardado na aba passa a usar a nova. */
+export async function trocarMinhaSenha(atual: string, nova: string): Promise<void> {
+  if (modoDemonstracao) throw new Error("No modo demonstração não há senha para trocar.");
+  await chamar(`/usuarios/eu/senha`, { method: "PUT", body: JSON.stringify({ atual, nova }) });
+  const login = atob(credencial() ?? "").split(":")[0];
+  sessionStorage.setItem(CHAVE_SESSAO, btoa(`${login}:${nova}`));
 }
