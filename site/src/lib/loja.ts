@@ -6,7 +6,7 @@ import type { ConfigLoja } from "./tipos";
  * O WhatsApp de exemplo não existe: os botões abrem o WhatsApp, mas a mensagem não chega a ninguém.
  */
 export const configExemplo: ConfigLoja = {
-  nome: "Pet Shop do Cleiton",
+  nome: "A Arca Pet",
   whatsapp: "62999990000",
   cidade: "Goiânia – GO",
   endereco: "Rua Exemplo, 123 · Centro",

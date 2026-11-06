@@ -118,7 +118,7 @@ class WhatsAppApiTest {
         mvc.perform(logado(post(BASE + "/whatsapp/lembretes-agora")))
                 .andExpect(jsonPath("$.enviadas").value(1));
         org.mockito.Mockito.verify(cloud).enviarTemplate(eq("5562999991234"), eq("lembrete_pet"),
-                argThat((List<String> v) -> v.get(0).equals("Pet Shop do Cleiton") && v.get(1).contains("vacina V10")));
+                argThat((List<String> v) -> v.get(0).equals("A Arca Pet") && v.get(1).contains("vacina V10")));
 
         LocalDate amanha = LocalDate.now(ZoneId.of("America/Sao_Paulo")).plusDays(1);
         mvc.perform(logado(get(BASE + "/lembretes").param("data", amanha.toString())))
