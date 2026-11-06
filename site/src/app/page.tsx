@@ -27,8 +27,8 @@ export default async function Site() {
     alternateName: loja.nomeAlternativo,
     slogan: loja.slogan,
     url: site,
-    logo: `${site}/logo-arca.jpg`,
-    image: `${site}/logo-arca.jpg`,
+    logo: `${site}/icone-512.png`,
+    image: `${site}/og-arca.png`,
     telephone: c.whatsapp ? `+55${c.whatsapp.replace(/\D/g, "").replace(/^55/, "")}` : undefined,
     address: {
       "@type": "PostalAddress",
@@ -97,7 +97,7 @@ export default async function Site() {
                 </div>
               </div>
               <div className="flex justify-center">
-                <Image src="/logo-arca.jpg" alt={`Logo ${c.nome}: arca com cachorro e gato`} width={300} height={300} priority className="w-full max-w-[300px] rounded-[28px]" />
+                <Image src="/logo-arca.svg" unoptimized alt={`Logo ${c.nome}: arca com cachorro e gato`} width={300} height={300} priority className="w-full max-w-[300px] rounded-[28px]" />
               </div>
             </div>
             {/* ondas, como no logo */}

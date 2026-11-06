@@ -10,7 +10,7 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3001"),
     title: { default: `${c.nome} | Banho, tosa e cuidados pet`, template: `%s | ${c.nome}` },
-    icons: { icon: "/favicon.png", apple: "/icone-192.png" },
+    icons: { icon: [{ url: "/logo-arca.svg", type: "image/svg+xml" }, { url: "/favicon.png", type: "image/png" }], apple: "/icone-192.png" },
     appleWebApp: { capable: true, title: c.nome, statusBarStyle: "default" },
     description: descricao,
     openGraph: {
@@ -19,7 +19,7 @@ export async function generateMetadata(): Promise<Metadata> {
       siteName: c.nome,
       title: `${c.nome} | ${loja.slogan}`,
       description: descricao,
-      images: [{ url: "/logo-arca.jpg", width: 150, height: 150, alt: `Logo ${c.nome}` }],
+      images: [{ url: "/og-arca.png", width: 1200, height: 630, alt: `Logo ${c.nome}` }],
     },
   };
 }

@@ -16,7 +16,7 @@ export function Pata({ tamanho = 22, cor = "#25488a" }: { tamanho?: number; cor?
 export function Marca({ subtitulo, nome = loja.nome }: { subtitulo?: string; nome?: string }) {
   return (
     <span className="flex items-center gap-3">
-      <Image src="/logo-arca.jpg" alt={`Logo ${nome}`} width={44} height={44} className="size-11 rounded-xl ring-2 ring-white/70" />
+      <Image src="/logo-arca.svg" unoptimized alt={`Logo ${nome}`} width={44} height={44} className="size-11 rounded-xl ring-2 ring-white/70" />
       <span className="flex flex-col leading-tight">
         <span className="font-titulo text-lg font-semibold">{nome}</span>
         {subtitulo && <span className="text-xs opacity-75">{subtitulo}</span>}
