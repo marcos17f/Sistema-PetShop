@@ -77,8 +77,8 @@ public class AgendamentoOnlineService {
         String servico = a.getTipo().nome();
         String detalhes = "%s do %s em %s às %s%s".formatted(servico, pet.getNome(), a.getData().format(DIA), a.getHora(),
                 a.isBuscaMoto() ? " (com busca de moto)" : "");
-        String texto = "Olá, %s! Recebemos seu agendamento: %s. A %s confirma pelo WhatsApp.".formatted(
-                primeiroNome(p.nome()), detalhes, loja.getNome());
+        String texto = "Olá, %s! Aqui é da %s. Recebemos seu agendamento: %s. Confirmamos pelo WhatsApp em breve.".formatted(
+                primeiroNome(p.nome()), loja.getNome(), detalhes);
         whatsapp.enviarTemplate(loja, tutor.getWhatsapp(), Tipo.CONFIRMACAO, texto, templateConfirmacao,
                 List.of(loja.getNome(), detalhes), "CONFIRMACAO:" + a.getId());
         return new Confirmacao(a.getData().format(DIA), a.getHora().toString(), servico, pet.getNome(), a.isBuscaMoto(), texto);

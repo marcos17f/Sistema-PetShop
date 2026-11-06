@@ -54,23 +54,23 @@ public class LembreteService {
             Pet pet = a.getPet();
             Tutor t = pet.getTutor();
             lista.add(novo("AGENDAMENTO:" + a.getId() + ":" + data, Lembrete.Tipo.AGENDAMENTO, pet, data,
-                    "Olá, %s! Lembrete: amanhã (%s) às %s o %s tem %s marcado. Podemos confirmar?".formatted(
-                            primeiroNome(t), data.format(DIA_MES), a.getHora().format(HORA), pet.getNome(), a.getTipo().nome())));
+                    "Olá, %s! Aqui é da %s. Lembrete: amanhã (%s) às %s o %s tem %s marcado. Podemos confirmar?".formatted(
+                            primeiroNome(t), loja.getNome(), data.format(DIA_MES), a.getHora().format(HORA), pet.getNome(), a.getTipo().nome())));
         }
 
         for (AplicacaoVacina v : vacinas.vencendoEm(loja.getId(), data)) {
             Pet pet = v.getPet();
             String dose = v.getDose() == null ? "" : " (" + v.getDose() + ")";
             lista.add(novo("VACINA:" + v.getId() + ":" + data, Lembrete.Tipo.VACINA, pet, data,
-                    "Olá, %s! Amanhã (%s) é dia da vacina %s%s do %s. Vamos agendar o horário?".formatted(
-                            primeiroNome(pet.getTutor()), data.format(DIA_MES), v.getVacina(), dose, pet.getNome())));
+                    "Olá, %s! Aqui é da %s. Amanhã (%s) é dia da vacina %s%s do %s. Vamos agendar o horário?".formatted(
+                            primeiroNome(pet.getTutor()), loja.getNome(), data.format(DIA_MES), v.getVacina(), dose, pet.getNome())));
         }
 
         for (Pet pet : pets.comRetornoDeBanho(loja.getId())) {
             if (!Objects.equals(pet.proximoBanho(), data)) continue;
             lista.add(novo("BANHO:" + pet.getId() + ":" + data, Lembrete.Tipo.BANHO, pet, data,
-                    "Olá, %s! Amanhã completa %d dias do último banho do %s. Quer agendar o próximo?".formatted(
-                            primeiroNome(pet.getTutor()), pet.getIntervaloBanhoDias(), pet.getNome())));
+                    "Olá, %s! Aqui é da %s. Amanhã completa %d dias do último banho do %s. Quer agendar o próximo?".formatted(
+                            primeiroNome(pet.getTutor()), loja.getNome(), pet.getIntervaloBanhoDias(), pet.getNome())));
         }
 
         if (lista.isEmpty()) return lista;

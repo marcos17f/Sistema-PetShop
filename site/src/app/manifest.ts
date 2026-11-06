@@ -14,14 +14,13 @@ export default async function manifest(): Promise<MetadataRoute.Manifest> {
     start_url: "/painel",
     scope: "/",
     display: "standalone",
-    background_color: "#f3f6f5",
-    theme_color: "#0e3b35",
+    background_color: "#f8f5ef",
+    theme_color: "#25488a",
     lang: "pt-BR",
     icons: [
       { src: "/icone-192.png", sizes: "192x192", type: "image/png" },
       { src: "/icone-512.png", sizes: "512x512", type: "image/png" },
       { src: "/icone-512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
-      { src: "/icone.svg", sizes: "any", type: "image/svg+xml" },
     ],
   };
 }

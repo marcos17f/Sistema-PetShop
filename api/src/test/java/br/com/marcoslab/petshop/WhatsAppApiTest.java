@@ -45,6 +45,9 @@ class WhatsAppApiTest {
     @Autowired
     ObjectMapper json;
 
+    @Autowired
+    org.springframework.jdbc.core.JdbcTemplate jdbc;
+
     @MockitoBean
     WhatsAppCloud cloud;
 
@@ -83,6 +86,8 @@ class WhatsAppApiTest {
                 .andExpect(jsonPath("$.lembretesAutomaticos").value(true))
                 .andExpect(jsonPath("$.textoRespostaRapida").value("Oi! Agende aqui: {link}"));
 
+        // o número real da loja ainda não foi informado (V14 tirou o fictício)
+        jdbc.update("update loja set whatsapp = '5562999990000' where slug = 'petshop-cleiton'");
         mvc.perform(logado(post(BASE + "/whatsapp/teste")))
                 .andExpect(jsonPath("$.status").value("SIMULADA"))
                 .andExpect(jsonPath("$.para").value("5562999990000"));

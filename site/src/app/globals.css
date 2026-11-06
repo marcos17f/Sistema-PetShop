@@ -1,19 +1,22 @@
 @import "tailwindcss";
 
 @theme {
-  --color-verde: #0b6e5f;
-  --color-verde-escuro: #0e3b35;
-  --color-verde-linha: #2b5a52;
-  --color-menta: #e6f0ee;
-  --color-menta-2: #9fc2bb;
-  --color-fundo: #f3f6f5;
-  --color-ink: #16211f;
-  --color-muted: #4c5b58;
-  --color-linha: #e5ecea;
-  --color-borda: #d5dfdc;
+  /* Cores do logo da A Arca Pet: azul da arca, caramelo do cachorro, creme. Nomes antigos mantidos para não mexer nas telas. */
+  --color-verde: #25488a;
+  --color-verde-escuro: #25488a;
+  --color-verde-linha: #4a6aa8;
+  --color-menta: #e8eefa;
+  --color-menta-2: #b5c6ea;
+  --color-fundo: #f8f5ef;
+  --color-ink: #14213d;
+  --color-muted: #4a5570;
+  --color-linha: #e8e4dc;
+  --color-borda: #dcd6cb;
   --color-caramelo: #f2b66b;
+  --color-madeira: #8b5a2b;
 
   --font-sans: "Plus Jakarta Sans", Inter, system-ui, sans-serif;
+  --font-titulo: "Fredoka", "Plus Jakarta Sans", system-ui, sans-serif;
 }
 
 body {
@@ -57,7 +60,7 @@ textarea:focus-visible {
     color: #fff;
   }
   .btn-verde:hover {
-    background: #08564a;
+    background: #1c3a73;
   }
   .btn-claro {
     background: #fff;
@@ -77,7 +80,7 @@ textarea:focus-visible {
     min-height: 46px;
     padding: 0 12px;
     border-radius: 12px;
-    border: 1px solid #c9d4d1;
+    border: 1px solid #cfc8bb;
     background: #fff;
     color: var(--color-ink);
     width: 100%;

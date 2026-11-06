@@ -91,7 +91,7 @@ export function AgendarOnline() {
               <div className="grid grid-cols-[repeat(auto-fit,minmax(150px,1fr))] gap-2.5" role="radiogroup" aria-label="Serviço">
                 {servicos.map((s) => (
                   <button key={s.tipo} type="button" role="radio" aria-checked={p.tipo === s.tipo} onClick={() => mudar("tipo", s.tipo as TipoServico)}
-                    className={`flex flex-col items-start rounded-2xl border-2 px-4 py-3 text-left ${p.tipo === s.tipo ? "border-verde bg-[#ddf2ea]" : "border-borda bg-white"}`}>
+                    className={`flex flex-col items-start rounded-2xl border-2 px-4 py-3 text-left ${p.tipo === s.tipo ? "border-verde bg-[#e8eefa]" : "border-borda bg-white"}`}>
                     <span className="font-extrabold">{s.nome}</span>
                     {s.preco !== null && <span className="text-sm text-muted">a partir de {reais(s.preco)}</span>}
                   </button>

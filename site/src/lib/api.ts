@@ -583,7 +583,7 @@ export async function agendarOnline(p: PedidoOnline): Promise<ConfirmacaoOnline>
   db.agendamentos.push(a);
   const servico = NOMES_SERVICO_PUBLICO[p.tipo].toLowerCase();
   const [, mm, dd] = p.data.split("-");
-  const mensagem = `Olá, ${p.nome.trim().split(/\s+/)[0]}! Recebemos seu agendamento: ${servico} do ${pet.nome} em ${dd}/${mm} às ${p.hora}${p.buscaMoto ? " (com busca de moto)" : ""}. A ${db.config.nome} confirma pelo WhatsApp.`;
+  const mensagem = `Olá, ${p.nome.trim().split(/\s+/)[0]}! Aqui é da ${db.config.nome}. Recebemos seu agendamento: ${servico} do ${pet.nome} em ${dd}/${mm} às ${p.hora}${p.buscaMoto ? " (com busca de moto)" : ""}. Confirmamos pelo WhatsApp em breve.`;
   simular(local, "CONFIRMACAO", mensagem);
   return { data: `${dd}/${mm}`, hora: p.hora, servico, petNome: pet.nome, buscaMoto: p.buscaMoto, mensagem };
 }
@@ -646,7 +646,7 @@ function pedirAvaliacaoDemo(petId: number) {
   const para = t.whatsapp.replace(/\D/g, "");
   const noventaDias = Date.now() - 90 * 86_400_000;
   if (db.mensagens.some((m) => m.tipo === "AVALIACAO" && m.para.endsWith(para) && Date.parse(m.criadoEm) > noventaDias)) return;
-  simular(t.whatsapp, "AVALIACAO", `Olá, ${t.nome.split(" ")[0]}! Obrigado por trazer o ${pet.nome} à ${db.config.nome}. Se puder, avalie nosso atendimento no Google: ${link}`);
+  simular(t.whatsapp, "AVALIACAO", `Olá, ${t.nome.split(" ")[0]}! Aqui é da ${db.config.nome}. Obrigado por trazer o ${pet.nome}! Se puder, avalie nosso atendimento no Google: ${link}`);
 }
 
 /* ---------- histórico do cliente ---------- */

@@ -126,7 +126,8 @@ class CampanhaApiTest {
         long thor = json.readTree(mvc.perform(logado(post(BASE + "/tutores/" + ana + "/pets")).content("{\"nome\":\"Thor\",\"especie\":\"Cão\"}"))
                 .andReturn().getResponse().getContentAsString()).get("id").asLong();
         String config = mvc.perform(logado(get(BASE + "/config"))).andReturn().getResponse().getContentAsString();
-        mvc.perform(logado(put(BASE + "/config")).content(config.replace("\"linkAvaliacao\":\"\"", "\"linkAvaliacao\":\"https://g.page/r/abc/review\"")))
+        mvc.perform(logado(put(BASE + "/config")).content(config.replace("\"linkAvaliacao\":\"\"", "\"linkAvaliacao\":\"https://g.page/r/abc/review\"")
+                .replace("\"whatsapp\":\"\"", "\"whatsapp\":\"62999990000\"")))
                 .andExpect(status().isOk());
         mvc.perform(logado(put(BASE + "/whatsapp")).content("""
                 {"lembretesAutomaticos":false,"respostaRapida":false,"textoRespostaRapida":"","pedirAvaliacao":true}

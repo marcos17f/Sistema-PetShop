@@ -175,7 +175,7 @@ export function calcularLembretes(data: string): Lembrete[] {
     lista.push({
       chave: `AGENDAMENTO:${a.id}:${data}`, tipo: "AGENDAMENTO", petId: pet.id, petNome: pet.nome, tutorNome: tutor.nome,
       whatsapp: tutor.whatsapp, data, enviado: false,
-      mensagem: `Olá, ${primeiro(tutor.nome)}! Lembrete: amanhã (${formatar(data)}) às ${a.hora} o ${pet.nome} tem ${NOMES_SERVICO[a.tipo].toLowerCase()} marcado. Podemos confirmar?`,
+      mensagem: `Olá, ${primeiro(tutor.nome)}! Aqui é da ${configExemplo.nome}. Lembrete: amanhã (${formatar(data)}) às ${a.hora} o ${pet.nome} tem ${NOMES_SERVICO[a.tipo].toLowerCase()} marcado. Podemos confirmar?`,
     });
   }
   for (const v of db.vacinas.filter((v) => v.proximaEm === data)) {
@@ -183,7 +183,7 @@ export function calcularLembretes(data: string): Lembrete[] {
     lista.push({
       chave: `VACINA:${v.id}:${data}`, tipo: "VACINA", petId: pet.id, petNome: pet.nome, tutorNome: tutor.nome,
       whatsapp: tutor.whatsapp, data, enviado: false,
-      mensagem: `Olá, ${primeiro(tutor.nome)}! Amanhã (${formatar(data)}) é dia da vacina ${v.vacina} (${v.dose}) do ${pet.nome}. Vamos agendar o horário?`,
+      mensagem: `Olá, ${primeiro(tutor.nome)}! Aqui é da ${configExemplo.nome}. Amanhã (${formatar(data)}) é dia da vacina ${v.vacina} (${v.dose}) do ${pet.nome}. Vamos agendar o horário?`,
     });
   }
   for (const pet of db.pets.filter((p) => proximoBanho(p.ultimoBanho, p.intervaloBanhoDias) === data)) {
@@ -191,7 +191,7 @@ export function calcularLembretes(data: string): Lembrete[] {
     lista.push({
       chave: `BANHO:${pet.id}:${data}`, tipo: "BANHO", petId: pet.id, petNome: pet.nome, tutorNome: tutor.nome,
       whatsapp: tutor.whatsapp, data, enviado: false,
-      mensagem: `Olá, ${primeiro(tutor.nome)}! Amanhã completa ${pet.intervaloBanhoDias} dias do último banho do ${pet.nome}. Quer agendar o próximo?`,
+      mensagem: `Olá, ${primeiro(tutor.nome)}! Aqui é da ${configExemplo.nome}. Amanhã completa ${pet.intervaloBanhoDias} dias do último banho do ${pet.nome}. Quer agendar o próximo?`,
     });
   }
   // cliente removido não tem WhatsApp: não recebe lembrete (mesma regra da API)

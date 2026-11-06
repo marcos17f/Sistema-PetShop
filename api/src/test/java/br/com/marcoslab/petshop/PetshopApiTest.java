@@ -132,7 +132,7 @@ class PetshopApiTest {
                 .andExpect(jsonPath("$[0].tipo").value("BANHO"))
                 .andExpect(jsonPath("$[0].chave").value("BANHO:" + petId + ":" + retorno))
                 .andExpect(jsonPath("$[0].mensagem").value(
-                        "Olá, Ana! Amanhã completa 15 dias do último banho do Thor. Quer agendar o próximo?"))
+                        "Olá, Ana! Aqui é da A Arca Pet. Amanhã completa 15 dias do último banho do Thor. Quer agendar o próximo?"))
                 .andExpect(jsonPath("$[0].enviado").value(false));
     }
 
@@ -151,7 +151,7 @@ class PetshopApiTest {
 
         String lista = mvc.perform(logado(get(BASE + "/lembretes").param("data", reforco.toString())))
                 .andExpect(jsonPath("$[0].mensagem").value(
-                        "Olá, Ana! Amanhã (10/12) é dia da vacina V10 (Reforço anual) do Thor. Vamos agendar o horário?"))
+                        "Olá, Ana! Aqui é da A Arca Pet. Amanhã (10/12) é dia da vacina V10 (Reforço anual) do Thor. Vamos agendar o horário?"))
                 .andReturn().getResponse().getContentAsString();
         String chave = json.readTree(lista).get(0).get("chave").asText();
 

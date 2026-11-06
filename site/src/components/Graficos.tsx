@@ -56,7 +56,7 @@ export function Graficos({ meses }: { meses: ResumoMes[] }) {
             </span>
           </figcaption>
           <svg viewBox={`0 0 ${L} ${A}`} className="w-full" role="img" aria-label="Custos fixos e variáveis por mês">
-            <line x1={0} x2={L} y1={BASE_Y} y2={BASE_Y} stroke="#d5dfdc" />
+            <line x1={0} x2={L} y1={BASE_Y} y2={BASE_Y} stroke="#dcd6cb" />
             {meses.map((m, i) => {
               const larg = Math.min(18, passo / 3);
               const x = i * passo + passo / 2 - larg - 1;

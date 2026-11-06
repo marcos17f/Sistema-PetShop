@@ -37,8 +37,8 @@ public class AvaliacaoService {
         String para = WhatsAppService.numero(t.getWhatsapp());
         if (mensagens.enviadaDesde(loja.getId(), para, Tipo.AVALIACAO, clock.instant().minus(Duration.ofDays(90)))) return;
         String nome = t.getNome().trim().split("\\s+")[0];
-        String texto = "Olá, %s! Obrigado por trazer o %s à %s. Se puder, avalie nosso atendimento no Google: %s"
-                .formatted(nome, a.getPet().getNome(), loja.getNome(), loja.getLinkAvaliacao());
+        String texto = "Olá, %s! Aqui é da %s. Obrigado por trazer o %s! Se puder, avalie nosso atendimento no Google: %s"
+                .formatted(nome, loja.getNome(), a.getPet().getNome(), loja.getLinkAvaliacao());
         whatsapp.enviarTemplate(loja, t.getWhatsapp(), Tipo.AVALIACAO, texto, template,
                 List.of(loja.getNome(), loja.getLinkAvaliacao()), "AVALIACAO:" + a.getId());
     }

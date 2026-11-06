@@ -1,6 +1,7 @@
+import Image from "next/image";
 import { loja } from "@/lib/loja";
 
-export function Pata({ tamanho = 22, cor = "#0e3b35" }: { tamanho?: number; cor?: string }) {
+export function Pata({ tamanho = 22, cor = "#25488a" }: { tamanho?: number; cor?: string }) {
   return (
     <svg width={tamanho} height={tamanho} viewBox="0 0 24 24" fill="none" stroke={cor} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       <circle cx="6" cy="9" r="2" />
@@ -15,11 +16,9 @@ export function Pata({ tamanho = 22, cor = "#0e3b35" }: { tamanho?: number; cor?
 export function Marca({ subtitulo, nome = loja.nome }: { subtitulo?: string; nome?: string }) {
   return (
     <span className="flex items-center gap-3">
-      <span className="inline-flex size-10 items-center justify-center rounded-xl bg-caramelo">
-        <Pata />
-      </span>
+      <Image src="/logo-arca.jpg" alt={`Logo ${nome}`} width={44} height={44} className="size-11 rounded-xl ring-2 ring-white/70" />
       <span className="flex flex-col leading-tight">
-        <span className="text-base font-extrabold">{nome}</span>
+        <span className="font-titulo text-lg font-semibold">{nome}</span>
         {subtitulo && <span className="text-xs opacity-75">{subtitulo}</span>}
       </span>
     </span>

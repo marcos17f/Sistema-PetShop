@@ -114,7 +114,7 @@ class AgendamentoOnlineApiTest {
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.hora").value("10:00"))
                 .andExpect(jsonPath("$.buscaMoto").value(true))
-                .andExpect(jsonPath("$.mensagem").value(containsString("Olá, Ana! Recebemos seu agendamento: banho do Thor")));
+                .andExpect(jsonPath("$.mensagem").value(containsString("Olá, Ana! Aqui é da A Arca Pet. Recebemos seu agendamento: banho do Thor")));
 
         // no painel: aguardando, online, com busca de moto
         mvc.perform(get(BASE + "/agenda").param("data", dia.toString()).with(httpBasic("loja", "senha-teste")))

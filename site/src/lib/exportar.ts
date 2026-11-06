@@ -20,12 +20,12 @@ const DIFERENCA = '+"R$" #,##0.00;[Red]-"R$" #,##0.00;"R$" 0,00';
 const PORCENTO = "0%";
 
 // mesmas cores do painel
-const VERDE_ESCURO = "#0e3b35";
-const VERDE = "#0b8f78";
-const MENTA = "#e6f0ee";
+const VERDE_ESCURO = "#25488a";
+const VERDE = "#3b63b0";
+const MENTA = "#e8eefa";
 const LINHA = "#d5dfdc";
 const VERMELHO = "#c2410c";
-const CINZA = "#4c5b58";
+const CINZA = "#4a5570";
 
 type Linha = [string, string, string, number];
 
@@ -150,7 +150,7 @@ export async function exportarMes(resumo: Resumo, lancamentos: Lancamento[], ate
       // barras dos meses com prejuízo em vermelho
       { cellRange: { from: { row: 23, column: 5 }, to: { row: 28, column: 5 } }, condition: { formula: "=$D23<0" }, style: { textColor: VERMELHO } },
       // linhas zebradas no resumo
-      { cellRange: { from: { row: 6, column: 1 }, to: { row: 13, column: 4 } }, condition: { formula: "=MOD(ROW(),2)=0" }, style: { backgroundColor: "#f3f6f5", borderColor: LINHA } },
+      { cellRange: { from: { row: 6, column: 1 }, to: { row: 13, column: 4 } }, condition: { formula: "=MOD(ROW(),2)=0" }, style: { backgroundColor: "#f8f5ef", borderColor: LINHA } },
     ],
   };
 
