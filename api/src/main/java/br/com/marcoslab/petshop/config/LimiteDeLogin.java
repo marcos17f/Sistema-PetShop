@@ -30,7 +30,8 @@ import java.util.concurrent.ConcurrentHashMap;
  * dentro de {@code bloqueio-minutos}, esse endereço fica bloqueado (429) por {@code bloqueio-minutos}, mesmo com a senha certa.
  * Login certo zera a contagem. O log registra o bloqueio só com o IP (nunca usuário ou senha).
  * shortcut: contagem em memória de uma instância (zera ao reiniciar); com várias instâncias da API, mover para o banco/Redis.
- * Atrás de proxy (Cloudflare, Nginx), ligar server.forward-headers-strategy=native para o IP ser o do cliente.
+ * Atrás de proxy, o IP do cliente vem do X-Forwarded-For só quando o proxy é interno (server.forward-headers-strategy).
+ * Memória limitada: IPs antigos são apagados e os mapas nunca passam de {@link #TETO} (ataque com milhares de IPs).
  */
 @Component
 public class LimiteDeLogin extends OncePerRequestFilter {
@@ -40,8 +41,12 @@ public class LimiteDeLogin extends OncePerRequestFilter {
     private final int maxTentativas;
     private final Duration janela;
     private final Clock clock;
+    static final int LIMPAR_ACIMA = 10_000;
+    static final int TETO = 50_000;
+
     private final Map<String, Deque<Instant>> falhas = new ConcurrentHashMap<>();
     private final Map<String, Instant> bloqueadoAte = new ConcurrentHashMap<>();
+    private volatile Instant proximaLimpeza = Instant.MIN;
     private final Deque<Instant> bloqueios = new java.util.concurrent.ConcurrentLinkedDeque<>();
 
     public LimiteDeLogin(@Value("${app.seguranca.max-tentativas:10}") int maxTentativas,
@@ -71,6 +76,9 @@ public class LimiteDeLogin extends OncePerRequestFilter {
         String ip = ip(e.getAuthentication().getDetails());
         if (ip == null) return;
         Instant agora = clock.instant();
+        // limpeza no máximo 1x por minuto (sob ataque não varre o mapa a cada pedido); acima do teto, na hora
+        int guardados = falhas.size() + bloqueadoAte.size();
+        if (guardados > TETO || (guardados > LIMPAR_ACIMA && !agora.isBefore(proximaLimpeza))) limpar(agora);
         Deque<Instant> lista = falhas.computeIfAbsent(ip, k -> new ArrayDeque<>());
         synchronized (lista) {
             lista.addLast(agora);
@@ -88,6 +96,24 @@ public class LimiteDeLogin extends OncePerRequestFilter {
     public void entrou(AuthenticationSuccessEvent e) {
         String ip = ip(e.getAuthentication().getDetails());
         if (ip != null) falhas.remove(ip);
+    }
+
+    int ipsGuardados() {
+        return falhas.size() + bloqueadoAte.size();
+    }
+
+    private void limpar(Instant agora) {
+        proximaLimpeza = agora.plusSeconds(60);
+        Instant corte = agora.minus(janela);
+        bloqueadoAte.values().removeIf(ate -> !agora.isBefore(ate));
+        falhas.entrySet().removeIf(e -> {
+            synchronized (e.getValue()) {
+                return e.getValue().isEmpty() || e.getValue().peekLast().isBefore(corte);
+            }
+        });
+        // os bloqueios ativos ficam: são eles que seguram quem está tentando adivinhar a senha
+        if (falhas.size() > TETO) falhas.clear();
+        if (bloqueadoAte.size() > TETO) bloqueadoAte.clear();
     }
 
     /** Quantos bloqueios por senha errada aconteceram nas últimas 24 h (para os avisos do sistema). */

@@ -17,6 +17,12 @@ spring:
 
 server:
   port: ${PORT:8080}
+  # Atrás do proxy da hospedagem: o IP do cliente (limites de login/agendamento) vem do X-Forwarded-For, mas só quando
+  # quem repassa é um proxy de rede interna; de fora, o cabeçalho é ignorado (não dá para falsificar o IP).
+  forward-headers-strategy: ${FORWARD_HEADERS_STRATEGY:native}
+  error:
+    include-stacktrace: never
+    include-message: never
 
 management:
   endpoints:

@@ -68,6 +68,8 @@ Login do painel: usuário `loja`, senha `troque-esta-senha` (padrão de desenvol
 | `WHATSAPP_TEMPLATE_AVALIACAO` | `avaliacao_atendimento` | Modelo do pedido de avaliação no Google |
 | `CAMPANHAS_LIMITE_DIA` | `200` | Mensagens de campanha por dia (a Meta limita números novos a ~250/dia); o resto continua às 10h do dia seguinte |
 | `SITE_URL` | `http://localhost:3001` | Endereço público do site (vai no link da resposta rápida) |
+| `FORWARD_HEADERS_STRATEGY` | `native` | IP real do cliente atrás do proxy da hospedagem (limites de login e agendamento). Só confia no `X-Forwarded-For` vindo de rede interna; use `none` se a API ficar exposta direto sem proxy |
+| `APP_SEGURANCA_MAX_CORPO_KB` | `1024` | Tamanho máximo de qualquer requisição (proteção contra envio gigante para derrubar a API) |
 
 ## 3. Endpoints (todos com HTTP Basic)
 

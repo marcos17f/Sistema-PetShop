@@ -240,4 +240,14 @@ class AgendamentoOnlineApiTest {
                 .andExpect(jsonPath("$[0].tipo").value("RESPOSTA_RAPIDA"))
                 .andExpect(jsonPath("$[0].texto").value(containsString("https://petshop.test/agendar?origem=whatsapp")));
     }
+
+    @Test
+    void corpoGiganteERecusadoAntesDeLer() throws Exception {
+        byte[] grande = new byte[2 * 1024 * 1024];
+        java.util.Arrays.fill(grande, (byte) 'a');
+        mvc.perform(post("/api/publico/lojas/petshop-cleiton/agendamentos").contentType(MediaType.APPLICATION_JSON).content(grande))
+                .andExpect(status().isPayloadTooLarge());
+        mvc.perform(post("/api/publico/whatsapp/webhook").contentType(MediaType.APPLICATION_JSON).content(grande))
+                .andExpect(status().isPayloadTooLarge());
+    }
 }
