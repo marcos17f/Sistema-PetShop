@@ -28,11 +28,15 @@ function credencial(): string | null {
 }
 
 export function estaLogado() {
-  return modoDemonstracao || !!credencial();
+  return !!credencial();
 }
 
 export async function entrar(usuario: string, senha: string) {
-  if (modoDemonstracao) return;
+  if (modoDemonstracao) {
+    // demonstração: entra com um clique, mas guarda a "sessão" na aba para o botão Sair funcionar igual
+    sessionStorage.setItem(CHAVE_SESSAO, "demonstracao");
+    return;
+  }
   const token = btoa(`${usuario}:${senha}`);
   const res = await fetch(`${API_URL}/api/lojas/${loja.slug}/tutores`, { headers: { Authorization: `Basic ${token}` } });
   if (res.status === 401 || res.status === 403) throw new Error("Usuário ou senha inválidos.");

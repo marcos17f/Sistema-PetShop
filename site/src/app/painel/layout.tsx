@@ -80,18 +80,16 @@ export default function PainelLayout({ children }: { children: React.ReactNode }
           {!modoDemonstracao && (
             <Link href="/painel/minha-senha" className="self-start text-sm font-semibold text-menta underline">Minha senha</Link>
           )}
-          {!modoDemonstracao && (
-            <button
-              type="button"
-              onClick={() => {
-                sair();
-                router.replace("/login");
-              }}
-              className="btn mt-1 w-full border-menta-2 text-white hover:bg-verde-linha"
-            >
-              <span aria-hidden="true">↪</span> Sair
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={() => {
+              sair();
+              router.replace("/login");
+            }}
+            className="btn mt-1 w-full border-menta-2 text-white hover:bg-verde-linha"
+          >
+            <span aria-hidden="true">↪</span> Sair
+          </button>
         </div>
       </aside>
       <main className="flex min-w-0 flex-[999_1_640px] flex-col gap-6 p-6 sm:p-8">
